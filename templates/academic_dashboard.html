@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Academic Analytics Lab — Customer Intelligence &amp; E-Commerce Analytics</title>
+<meta name="description" content="Academic analytics laboratory for Data Warehousing and Data Mining on the Olist Brazilian E-Commerce dataset."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/academic.css') }}"/>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- TOP NAVIGATION BAR                                              -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<nav class="top-nav">
+  <div class="nav-brand-group">
+    <div class="nav-brand-badge">A</div>
+    <div class="nav-titles">
+      <span class="nav-title">Academic Lab</span>
+      <span class="nav-sep">/</span>
+      <span class="nav-sub" id="currentSectionBreadcrumb">Overview</span>
+    </div>
+  </div>
+  <div class="nav-right-meta">
+    <div class="dataset-status-pill">
+      <span class="status-dot"></span>
+      <span>Olist E-Commerce</span>
+      <span style="color:var(--text-tertiary);">&middot;</span>
+      <span style="font-weight:600;">Live Physical Dataset</span>
+    </div>
+    <a href="/" class="nav-back-link">&larr; Customer App</a>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- MAIN WORKSPACE LAYOUT: SIDEBAR + WORKSPACE                      -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="lab-layout">
+
+<!-- ─────────────────── COMPACT LEFT SIDEBAR ─────────────────── -->
+<aside class="lab-sidebar">
+  <div class="sidebar-category-header">Platform</div>
+  <div class="sidebar-nav-list">
+    <button class="sidebar-btn active" data-view="overview" onclick="switchLabTab('overview', this)">
+      <span class="sidebar-icon">🏠</span> Overview
+    </button>
+    <button class="sidebar-btn" data-view="exploration" onclick="switchLabTab('exploration', this)">
+      <span class="sidebar-icon">🔍</span> Data Exploration
+    </button>
+  </div>
+
+  <div class="sidebar-category-header">Analytics Modules</div>
+  <div class="sidebar-nav-list">
+    <button class="sidebar-btn" data-type="classification" onclick="selectAnalysisFromSidebar('classification', this)">
+      <span class="sidebar-icon">🤖</span> Classification
+    </button>
+    <button class="sidebar-btn" data-type="regression" onclick="selectAnalysisFromSidebar('regression', this)">
+      <span class="sidebar-icon">📈</span> Regression
+    </button>
+    <button class="sidebar-btn" data-type="clustering" onclick="selectAnalysisFromSidebar('clustering', this)">
+      <span class="sidebar-icon">🔵</span> Clustering
+    </button>
+    <button class="sidebar-btn" data-type="association_rules" onclick="selectAnalysisFromSidebar('association_rules', this)">
+      <span class="sidebar-icon">🔗</span> Association Rules
+    </button>
+    <button class="sidebar-btn" data-type="olap" onclick="selectAnalysisFromSidebar('olap', this)">
+      <span class="sidebar-icon">📊</span> OLAP Analysis
+    </button>
+  </div>
+
+  <div class="sidebar-category-header">Architecture</div>
+  <div class="sidebar-nav-list">
+    <button class="sidebar-btn" data-view="schema" onclick="switchLabTab('schema', this)">
+      <span class="sidebar-icon">🗂️</span> Data Warehouse / Schemas
+    </button>
+    <button class="sidebar-btn" data-view="methodology" onclick="switchLabTab('methodology', this)">
+      <span class="sidebar-icon">📋</span> Methodology
+    </button>
+  </div>
+
+  <div class="sidebar-history-container">
+    <div class="sidebar-category-header" style="padding-left:0.2rem;margin-bottom:0.2rem;">Experiment History</div>
+    <div id="historyList" class="history-list">
+      <div class="history-empty">No runs yet</div>
+    </div>
+    <button class="btn-sidebar-reset" onclick="resetLab()">
+      <span>↺</span> Reset Workspace
+    </button>
+  </div>
+</aside>
+
+<!-- ─────────────────── MAIN WORKSPACE CONTENT ───────────────── -->
+<main class="lab-main">
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VIEW: OVERVIEW                                                  -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="view-overview" class="view active-view">
+  <div class="overview-hero-card">
+    <h2 class="overview-hero-title">Customer Intelligence &amp; E-Commerce Analytics Lab</h2>
+    <p class="overview-hero-desc">
+      A research-grade data mining and warehousing laboratory executing analytical workloads against the physical Brazilian Olist dataset. Explore real-time machine learning benchmarks, multidimensional OLAP slicing, market basket patterns, and conformed relational schema introspections.
+    </p>
+  </div>
+
+  <!-- Meaningful Dataset Stats (Restrained, Not Overcrowded) -->
+  <div class="overview-stat-row">
+    <div class="stat-card">
+      <div class="stat-label">Orders Evaluated</div>
+      <div class="stat-number">99,441</div>
+      <div class="stat-sub">Physical Olist transactions</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Unique Customers</div>
+      <div class="stat-number">96,096</div>
+      <div class="stat-sub">Across 27 Brazilian states</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Product Catalog</div>
+      <div class="stat-number">32,951</div>
+      <div class="stat-sub">73 verified retail categories</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Transaction Volume</div>
+      <div class="stat-number">R$ 16.0M</div>
+      <div class="stat-sub">Total sales &amp; freight billed</div>
+    </div>
+  </div>
+
+  <!-- Quick Access Analytical Modules -->
+  <div class="section-heading" style="margin-bottom:0.8rem;">Analytical Modules</div>
+  <div class="overview-grid">
+    <div class="module-card">
+      <div class="module-header">
+        <span class="module-title">🤖 Classification</span>
+        <span class="module-badge">Supervised</span>
+      </div>
+      <p class="module-desc">Predict customer churn probability on behavioral holdouts using Logistic Regression, Decision Tree, Random Forest, and Gaussian Naive Bayes.</p>
+      <button class="module-link-btn" onclick="selectAnalysisFromSidebar('classification')">Launch Module &rarr;</button>
+    </div>
+
+    <div class="module-card">
+      <div class="module-header">
+        <span class="module-title">📈 Regression</span>
+        <span class="module-badge">Freight Value</span>
+      </div>
+      <p class="module-desc">Forecast shipping and freight charges from product mass, volume, and state logistics using Ordinary Least Squares, Ridge, Lasso, and Elastic Net.</p>
+      <button class="module-link-btn" onclick="selectAnalysisFromSidebar('regression')">Launch Module &rarr;</button>
+    </div>
+
+    <div class="module-card">
+      <div class="module-header">
+        <span class="module-title">🔵 Clustering</span>
+        <span class="module-badge">Segmentation</span>
+      </div>
+      <p class="module-desc">Unsupervised RFM customer segmentation via K-Means and Agglomerative Hierarchical clustering with WCSS Elbow and Silhouette validation.</p>
+      <button class="module-link-btn" onclick="selectAnalysisFromSidebar('clustering')">Launch Module &rarr;</button>
+    </div>
+
+    <div class="module-card">
+      <div class="module-header">
+        <span class="module-title">🔗 Association Rules</span>
+        <span class="module-badge">Market Basket</span>
+      </div>
+      <p class="module-desc">Mine co-purchase relationships with the Apriori algorithm, calculating support, confidence, lift, and antecedent-consequent visual graphs.</p>
+      <button class="module-link-btn" onclick="selectAnalysisFromSidebar('association_rules')">Launch Module &rarr;</button>
+    </div>
+
+    <div class="module-card">
+      <div class="module-header">
+        <span class="module-title">📊 OLAP Operations</span>
+        <span class="module-badge">Data Warehouse</span>
+      </div>
+      <p class="module-desc">Perform Roll-Up, Drill-Down, Slice, and Dice operations across Time, Geography, and Product dimensions on aggregated analytical cubes.</p>
+      <button class="module-link-btn" onclick="selectAnalysisFromSidebar('olap')">Launch Module &rarr;</button>
+    </div>
+
+    <div class="module-card">
+      <div class="module-header">
+        <span class="module-title">🗂️ Schema Introspection</span>
+        <span class="module-badge">Relational DW</span>
+      </div>
+      <p class="module-desc">Inspect live Star, Snowflake, and Fact Constellation architectures directly against physical primary and foreign keys of the Olist database.</p>
+      <button class="module-link-btn" onclick="switchLabTab('schema')">Inspect Schemas &rarr;</button>
+    </div>
+  </div>
+</div><!-- /view-overview -->
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VIEW: ANALYSIS LABORATORY                                       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="view-lab" class="view">
+
+  <!-- CONTROL PANEL -->
+  <div class="control-panel">
+    <div class="control-panel-header">
+      <div>
+        <h2 class="control-title" id="labControlTitle">Analysis Configuration</h2>
+        <p class="control-sub" id="labControlSub">Select an algorithm, adjust parameters, and execute the analysis on the live Olist dataset.</p>
+      </div>
+    </div>
+
+    <div class="control-grid">
+      <!-- Analysis Type -->
+      <div class="control-group">
+        <label class="ctrl-label" for="analysisType">Analysis Module</label>
+        <select id="analysisType" class="ctrl-select" onchange="onTypeChange()">
+          <option value="">— Select Module —</option>
+          <option value="classification">🤖 Classification (Churn)</option>
+          <option value="regression">📈 Regression (Freight Value)</option>
+          <option value="clustering">🔵 Clustering (Customer Segments)</option>
+          <option value="association_rules">🔗 Association Rules (Apriori)</option>
+          <option value="olap">📊 OLAP Analysis (Data Cube)</option>
+        </select>
+      </div>
+
+      <!-- Model / Algorithm (cascading) -->
+      <div class="control-group">
+        <label class="ctrl-label" for="modelSelect">Algorithm / Model</label>
+        <select id="modelSelect" class="ctrl-select" onchange="onModelChange()" disabled>
+          <option value="">— Select Algorithm —</option>
+        </select>
+      </div>
+
+      <!-- Dataset Badge -->
+      <div class="control-group">
+        <label class="ctrl-label">Active Dataset</label>
+        <div class="ctrl-dataset-badge" id="datasetBadge">Select an analysis module</div>
+      </div>
+    </div>
+
+    <!-- Parameters Panel (dynamic) -->
+    <div id="paramsPanel" class="params-panel hidden">
+      <div class="params-header" onclick="toggleParams()">
+        <span>⚙️ Model &amp; Evaluation Parameters</span>
+        <span id="paramsToggleIcon">▼</span>
+      </div>
+      <div id="paramsBody" class="params-body">
+        <!-- Injected by JS -->
+      </div>
+    </div>
+
+    <!-- OLAP extra filters -->
+    <div id="olapFiltersPanel" class="params-panel hidden" style="margin-top:0.5rem;">
+      <div class="params-header"><span>🎛️ Multidimensional Dimension Filters</span></div>
+      <div class="params-body" id="olapFiltersBody">
+        <!-- Injected by JS -->
+      </div>
+    </div>
+
+    <div class="control-actions">
+      <button id="runBtn" class="btn-run" onclick="runAnalysis()" disabled>
+        <span id="runBtnIcon">▶</span>
+        <span id="runBtnText">Run Analysis</span>
+      </button>
+      <button class="btn-secondary" onclick="resetLab()">↺ Clear</button>
+    </div>
+  </div>
+
+  <!-- IDLE STATE -->
+  <div id="idleState" class="state-panel idle-state">
+    <div class="state-icon">🔬</div>
+    <h2>Ready to Execute Analysis</h2>
+    <p>Choose an analytical module and algorithm above to calculate real performance metrics, curves, and distributions on the Olist database.</p>
+    <div class="idle-hints">
+      <div class="idle-hint"><strong>Classification</strong> &middot; Churn evaluation on stratified holdouts</div>
+      <div class="idle-hint"><strong>Regression</strong> &middot; Order freight prediction &amp; residual analysis</div>
+      <div class="idle-hint"><strong>Clustering</strong> &middot; RFM behavior, Elbow &amp; Silhouette analysis</div>
+      <div class="idle-hint"><strong>Association</strong> &middot; Itemset co-occurrence &amp; rule networks</div>
+      <div class="idle-hint"><strong>OLAP</strong> &middot; Dimensional aggregations across time and geography</div>
+    </div>
+  </div>
+
+  <!-- LOADING STATE -->
+  <div id="loadingState" class="state-panel loading-state hidden">
+    <div class="loading-spinner"></div>
+    <h2 id="loadingTitle">Computing Analysis...</h2>
+    <div class="loading-steps" id="loadingSteps">
+      <div class="load-step active" id="ls1">📂 Loading physical dataset...</div>
+      <div class="load-step" id="ls2">🔧 Preprocessing &amp; encoding features...</div>
+      <div class="load-step" id="ls3">🏋️ Fitting model parameters...</div>
+      <div class="load-step" id="ls4">📊 Evaluating test metrics...</div>
+      <div class="load-step" id="ls5">✅ Constructing live visualizations...</div>
+    </div>
+  </div>
+
+  <!-- ERROR STATE -->
+  <div id="errorState" class="state-panel error-state hidden">
+    <div class="state-icon" style="color:var(--danger);">⚠️</div>
+    <h2>Analysis Execution Failed</h2>
+    <p id="errorMsg" style="color:var(--danger);margin-bottom:1rem;"></p>
+    <button class="btn-secondary" onclick="resetToIdle()">&larr; Return to Configuration</button>
+  </div>
+
+  <!-- STALE WARNING BANNER -->
+  <div id="staleWarningBanner" class="stale-warning hidden">
+    <span>⚠️</span>
+    <span><strong>Parameters Modified:</strong> Displayed charts represent the previous run (<span id="staleModelName"></span>). Click <strong>Run Analysis</strong> to recalculate on the live dataset.</span>
+  </div>
+
+  <!-- RESULT AREA -->
+  <div id="resultArea" class="result-area hidden">
+
+    <!-- RESULT HEADER -->
+    <div class="result-header">
+      <div class="result-meta">
+        <div class="result-title" id="resTitle"></div>
+        <div class="result-tags">
+          <span class="tag tag-type" id="resType"></span>
+          <span class="tag tag-dataset" id="resDataset"></span>
+          <span class="tag tag-status" id="resStatus"></span>
+        </div>
+      </div>
+      <div class="result-timing" id="resTiming"></div>
+    </div>
+
+    <!-- METRICS CARDS -->
+    <div class="metrics-section">
+      <h3 class="section-heading">Authoritative Evaluation Metrics</h3>
+      <div id="metricsCards" class="metrics-grid"></div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts-section" id="chartsSection">
+      <h3 class="section-heading">Analytical Visualizations</h3>
+      <div id="chartsGrid" class="charts-grid"></div>
+    </div>
+
+    <!-- RESULTS TABLE -->
+    <div class="table-section" id="tableSection">
+      <div class="table-header-row">
+        <h3 class="section-heading" style="margin-bottom:0;">Tabular Breakdown</h3>
+        <div class="table-controls" style="display:flex;gap:0.5rem;align-items:center;">
+          <input type="text" id="tableSearch" class="table-search" placeholder="Filter rows..." oninput="filterTable()"/>
+          <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table id="resultsTable" class="data-table">
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="table-pagination" id="tablePagination"></div>
+    </div>
+
+    <!-- INTERPRETATION -->
+    <div class="interpretation-section">
+      <h3 class="section-heading">Analytical Interpretation &amp; Context</h3>
+      <div id="interpretationBox" class="interpretation-box"></div>
+    </div>
+
+    <!-- TECHNICAL ACCORDION -->
+    <div class="accordion-section">
+      <h3 class="section-heading">Technical Metadata &amp; Reproducibility</h3>
+
+      <div class="accordion-item">
+        <button class="accordion-btn" onclick="toggleAccordion(this)">
+          <span>📂 Dataset Summary &amp; Samples</span><span class="acc-icon">▼</span>
+        </button>
+        <div class="accordion-body hidden" id="accDataset"></div>
+      </div>
+
+      <div class="accordion-item">
+        <button class="accordion-btn" onclick="toggleAccordion(this)">
+          <span>⚙️ Model Hyperparameters &amp; Random Seed</span><span class="acc-icon">▼</span>
+        </button>
+        <div class="accordion-body hidden" id="accParams"></div>
+      </div>
+
+      <div class="accordion-item">
+        <button class="accordion-btn" onclick="toggleAccordion(this)">
+          <span>📋 Executed Query / Mathematical Logic</span><span class="acc-icon">▼</span>
+        </button>
+        <div class="accordion-body hidden" id="accQuery"></div>
+      </div>
+
+      <div class="accordion-item">
+        <button class="accordion-btn" onclick="toggleAccordion(this)">
+          <span>🔢 Feature Weights &amp; Importance Analysis</span><span class="acc-icon">▼</span>
+        </button>
+        <div class="accordion-body hidden" id="accFeatures"></div>
+      </div>
+
+    </div><!-- /accordion -->
+  </div><!-- /resultArea -->
+</div><!-- /view-lab -->
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VIEW: DATA EXPLORATION                                          -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="view-exploration" class="view">
+  <div class="view-header">
+    <h1>Data Exploration &amp; Feature Profiling</h1>
+    <p>Live exploration of Olist physical tables with missing value rates, distribution shapes, and Pearson correlations.</p>
+  </div>
+
+  <div class="exploration-controls" style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;margin-bottom:1.25rem;">
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+      <label class="ctrl-label" style="margin:0;">Target Table:</label>
+      <select id="explorationDataset" class="ctrl-select" onchange="loadExploration(1)" style="min-width:210px;">
+        <option value="customers">Customers (olist_customers)</option>
+        <option value="orders">Orders (olist_orders)</option>
+        <option value="items">Order Items (olist_order_items)</option>
+        <option value="payments">Payments (olist_order_payments)</option>
+        <option value="reviews">Reviews (olist_order_reviews)</option>
+        <option value="products">Products (olist_products)</option>
+        <option value="churn">Churn Dataset (Engineered RFM)</option>
+        <option value="regression">Regression Dataset (Freight Logistics)</option>
+      </select>
+    </div>
+    <button class="btn-secondary" onclick="loadExploration(1)">🔄 Refresh Data</button>
+  </div>
+
+  <!-- LIVE EXPLORATION CHARTS & CONTROLS CONTAINER -->
+  <div id="explorationChartsArea" class="hidden" style="margin-bottom:1.5rem;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:1rem;margin-bottom:1rem;">
+      <!-- Missing Values Live Chart -->
+      <div class="chart-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">
+          <div class="chart-card-title">Missing Values Rate (%)</div>
+          <button class="btn-chart-action" onclick="downloadChartPNG('chart_expl_missing', 'Missing_Values')">📷 PNG</button>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="chart_expl_missing"></canvas></div>
+      </div>
+
+      <!-- Feature Distribution Live Chart -->
+      <div class="chart-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;gap:0.5rem;flex-wrap:wrap;">
+          <div class="chart-card-title">Feature Distribution</div>
+          <div style="display:flex;align-items:center;gap:0.4rem;">
+            <select id="explFeatureSelect" class="ctrl-select" onchange="onExplorationFeatureChange()" style="padding:0.25rem 0.5rem;font-size:0.75rem;max-width:180px;"></select>
+            <button class="btn-chart-action" onclick="downloadChartPNG('chart_expl_feat', 'Feature_Distribution')">📷 PNG</button>
+          </div>
+        </div>
+        <div id="explFeatureSummary" style="font-size:0.74rem;color:var(--text-muted);margin-bottom:0.4rem;"></div>
+        <div class="chart-canvas-wrap"><canvas id="chart_expl_feat"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Correlation Heatmap Container -->
+    <div id="explCorrContainer" class="chart-card hidden" style="margin-bottom:1rem;">
+      <div class="chart-card-title" style="margin-bottom:0.5rem;">Numeric Correlation Matrix (Pearson r)</div>
+      <div id="explCorrHeatmap" style="overflow-x:auto;"></div>
+    </div>
+  </div>
+
+  <div id="explorationContent">
+    <div class="idle-state state-panel"><div class="state-icon">🔍</div><p>Select a table above to inspect physical distributions.</p></div>
+  </div>
+</div><!-- /view-exploration -->
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VIEW: SCHEMA EXPLORER                                          -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="view-schema" class="view">
+  <div class="view-header">
+    <h1>Data Warehouse Architectures &amp; Schemas</h1>
+    <p>Live schema introspection executed directly against the physical Olist CSV tables with verified Primary and Foreign Keys.</p>
+  </div>
+
+  <!-- Schema Tabs -->
+  <div class="schema-tabs">
+    <button class="schema-tab active" onclick="showSchema('star', this)">⭐ Star Schema</button>
+    <button class="schema-tab" onclick="showSchema('snowflake', this)">❄️ Snowflake Schema</button>
+    <button class="schema-tab" onclick="showSchema('constellation', this)">✨ Fact Constellation</button>
+    <button class="schema-tab" onclick="showSchema('comparison', this)">📊 Schema Comparison</button>
+  </div>
+
+  <!-- Schema Global Controls Toolbar (Active for Diagram Views) -->
+  <div id="schemaToolbar" class="schema-toolbar">
+    <div class="schema-toolbar-group">
+      <button class="schema-btn" onclick="expandAllTables()" title="Expand all tables to show all columns and types">
+        <span>⊞</span> Expand All
+      </button>
+      <button class="schema-btn" onclick="collapseAllTables()" title="Collapse all tables to show primary keys and measures">
+        <span>⊟</span> Collapse All
+      </button>
+      <div style="width:1px;height:16px;background:var(--border);margin:0 0.2rem;"></div>
+      <button class="schema-btn" onclick="zoomSchema(0.15)" title="Zoom in canvas">
+        <span>＋</span> Zoom In
+      </button>
+      <button class="schema-btn" onclick="zoomSchema(-0.15)" title="Zoom out canvas">
+        <span>－</span> Zoom Out
+      </button>
+      <span class="schema-zoom-badge" id="schemaZoomVal">100%</span>
+      <button class="schema-btn" onclick="fitSchemaToScreen()" title="Fit all tables to current viewport">
+        <span>⛶</span> Fit to Screen
+      </button>
+      <button class="schema-btn" onclick="resetSchemaLayout()" title="Reset zoom and center position">
+        <span>↺</span> Reset Layout
+      </button>
+    </div>
+    <div class="schema-toolbar-group">
+      <div class="schema-meta-pill">
+        <span class="dot"></span>
+        <span>Dimensional DW Model</span>
+        <span style="color:var(--text-tertiary);">&middot;</span>
+        <span style="font-weight:600;">Live Olist CSVs</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Schema Legend Bar -->
+  <div id="schemaLegendBar" class="schema-legend-bar">
+    <div class="schema-legend-item"><span class="legend-badge badge-fact">Fact Table</span> Central Transactions</div>
+    <div class="schema-legend-item"><span class="legend-badge badge-dim">Dimension Table</span> Contextual Entities</div>
+    <div class="schema-legend-item" id="legendSubdimItem" style="display:none;"><span class="legend-badge badge-subdim">Sub-Dimension</span> 3NF Normalized</div>
+    <div class="schema-legend-item"><span class="legend-badge badge-pk">PK</span> Primary Key</div>
+    <div class="schema-legend-item"><span class="legend-badge badge-fk">FK</span> Foreign Key</div>
+    <div class="schema-legend-item"><span class="legend-badge badge-measure">MEASURE</span> Metric / Value</div>
+  </div>
+
+  <!-- STAR SCHEMA -->
+  <div id="schema-star" class="schema-view active-schema">
+    <div id="starSchemaContent">
+      <div class="state-panel"><div class="loading-spinner"></div><p>Introspecting physical tables for Star Schema...</p></div>
+    </div>
+  </div>
+
+  <!-- SNOWFLAKE SCHEMA -->
+  <div id="schema-snowflake" class="schema-view hidden">
+    <div id="snowflakeSchemaContent">
+      <div class="state-panel"><div class="loading-spinner"></div><p>Introspecting physical tables for Snowflake Schema...</p></div>
+    </div>
+  </div>
+
+  <!-- FACT CONSTELLATION -->
+  <div id="schema-constellation" class="schema-view hidden">
+    <div id="constellationSchemaContent">
+      <div class="state-panel"><div class="loading-spinner"></div><p>Introspecting physical tables for Fact Constellation...</p></div>
+    </div>
+  </div>
+
+  <!-- SCHEMA COMPARISON -->
+  <div id="schema-comparison" class="schema-view hidden">
+    <div id="comparisonSchemaContent">
+      <div class="state-panel"><div class="loading-spinner"></div><p>Compiling architectural trade-offs...</p></div>
+    </div>
+    <div id="comparisonExplain" class="interpretation-box" style="margin-top:1rem;display:none;"></div>
+  </div>
+
+  <!-- TABLE DETAIL PANEL -->
+  <div id="tableDetailPanel" class="table-detail-panel hidden">
+    <div class="table-detail-header">
+      <h3 id="tableDetailTitle" style="font-size:0.95rem;font-weight:700;"></h3>
+      <button onclick="closeTableDetail()" class="btn-close">✕</button>
+    </div>
+    <div id="tableDetailBody"></div>
+  </div>
+</div><!-- /view-schema -->
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VIEW: METHODOLOGY                                               -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="view-methodology" class="view">
+  <div class="view-header">
+    <h1>Academic Research Methodology</h1>
+    <p>Theoretical framework, data preprocessing pipelines, and evaluation protocols adhered to in this laboratory.</p>
+  </div>
+  <div class="overview-grid">
+    <div class="module-card">
+      <div class="module-header">
+        <span class="module-title">Supervised Churn Classification</span>
+        <span class="module-badge">CRISP-DM</span>
+      </div>
+      <p class="module-desc">Models evaluate churn using holdout stratified splits (80/20) without SMOTE leakage on test partitions. Benchmarks compute Balanced Accuracy, Recall, and ROC-AUC under severe class imbalance (~6.1% churn rate).</p>
+    </div>
+    <div class="module-card">
+      <div class="module-header">
+        <span class="module-title">Logistics Freight Regression</span>
+        <span class="module-badge">Physical Modeling</span>
+      </div>
+      <p class="module-desc">Continuous estimation of order freight value based on physical weight, dimensional package volume ($L \times W \times H$), and seller/customer state origin-destination routing with L1/L2 regularization penalties.</p>
+    </div>
+    <div class="module-card">
+      <div class="module-header">
+        <span class="module-title">Unsupervised Segmentation</span>
+        <span class="module-badge">RFM Analysis</span>
+      </div>
+      <p class="module-desc">Partitions multi-order customers into personas (Champions, Loyal, At-Risk, Dormant). Evaluates mathematical cluster separation using the Silhouette Index ($K=2$ peak) against managerial interpretability ($K=4$).</p>
+    </div>
+    <div class="module-card">
+      <div class="module-header">
+        <span class="module-title">Apriori Market Basket Analysis</span>
+        <span class="module-badge">Sparse Matrix</span>
+      </div>
+      <p class="module-desc">Frequent itemset discovery on order transaction baskets. Explicitly addresses dataset sparsity (only ~0.75% multi-category orders) with tailored minimum support thresholds.</p>
+    </div>
+    <div class="module-card">
+      <div class="module-header">
+        <span class="module-title">Multidimensional OLAP Modeling</span>
+        <span class="module-badge">Analytical Cube</span>
+      </div>
+      <p class="module-desc">Data warehousing cubes supporting Roll-Up across time, Drill-Down into operational quarters, Slices on individual state jurisdictions, and Dices across multi-dimensional criteria.</p>
+    </div>
+    <div class="module-card">
+      <div class="module-header">
+        <span class="module-title">Relational Schema Architecture</span>
+        <span class="module-badge">Dimensional DW</span>
+      </div>
+      <p class="module-desc">Direct introspection of physical CSV relationships: Star Schema (denormalized fast reads), Snowflake (3NF sub-dimensions), and Fact Constellation (shared dimensions across orders and payments).</p>
+    </div>
+  </div>
+</div><!-- /view-methodology -->
+
+</main><!-- /lab-main -->
+</div><!-- /lab-layout -->
+
+<!-- TABLE DETAIL OVERLAY (shared) -->
+<div id="tableDetailOverlay" class="overlay hidden" onclick="closeTableDetail()"></div>
+
+<script src="{{ url_for('static', filename='js/academic.js') }}"></script>
+</body>
+</html>

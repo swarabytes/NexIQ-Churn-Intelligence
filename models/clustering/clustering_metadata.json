@@ -1,0 +1,149 @@
+{
+    "algorithm": "K-Means",
+    "selected_k": 4,
+    "random_state": 42,
+    "customer_count": 94986,
+    "features": [
+        "days_since_last_order",
+        "total_orders",
+        "total_spend",
+        "average_review_score",
+        "average_payment_installments",
+        "customer_tenure_days"
+    ],
+    "transformations": {
+        "log1p": [
+            "total_orders",
+            "total_spend"
+        ]
+    },
+    "scaler": "StandardScaler",
+    "wcss": 295860.1907315542,
+    "silhouette_score": 0.30709325285502825,
+    "cluster_sizes": {
+        "0": 57681,
+        "1": 16875,
+        "2": 2887,
+        "3": 17543
+    },
+    "cluster_profiles": [
+        {
+            "Cluster": 0,
+            "Count": 57681,
+            "Percentage": 60.72579116922494,
+            "Mean_days_since_last_order": 238.89468883737632,
+            "Median_days_since_last_order": 220.7777662037037,
+            "Mean_total_orders": 1.0,
+            "Median_total_orders": 1.0,
+            "Mean_total_spend": 110.3399115826702,
+            "Median_total_spend": 86.14,
+            "Mean_average_review_score": 4.744535587532206,
+            "Median_average_review_score": 5.0,
+            "Mean_average_payment_installments": 1.7862727761307884,
+            "Median_average_payment_installments": 1.0,
+            "Mean_customer_tenure_days": 0.0,
+            "Median_customer_tenure_days": 0.0,
+            "Total_Cluster_Spend": 6364516.4399999995,
+            "Average_Customer_Spend": 110.3399115826702
+        },
+        {
+            "Cluster": 1,
+            "Count": 16875,
+            "Percentage": 17.765776009096076,
+            "Mean_days_since_last_order": 261.456139548011,
+            "Median_days_since_last_order": 251.89635416666667,
+            "Mean_total_orders": 1.0,
+            "Median_total_orders": 1.0,
+            "Mean_total_spend": 358.1761908148148,
+            "Median_total_spend": 229.63,
+            "Mean_average_review_score": 4.304958819516482,
+            "Median_average_review_score": 5.0,
+            "Mean_average_payment_installments": 7.450548148148148,
+            "Median_average_payment_installments": 8.0,
+            "Mean_customer_tenure_days": 0.0,
+            "Median_customer_tenure_days": 0.0,
+            "Total_Cluster_Spend": 6044223.22,
+            "Average_Customer_Spend": 358.1761908148148
+        },
+        {
+            "Cluster": 2,
+            "Count": 2887,
+            "Percentage": 3.0393952793043186,
+            "Mean_days_since_last_order": 227.20002445910148,
+            "Median_days_since_last_order": 206.4758449074074,
+            "Mean_total_orders": 2.1139591271215794,
+            "Median_total_orders": 2.0,
+            "Mean_total_spend": 308.4118323519224,
+            "Median_total_spend": 225.54999999999998,
+            "Mean_average_review_score": 4.16786246396294,
+            "Median_average_review_score": 4.5,
+            "Mean_average_payment_installments": 3.3120343796218408,
+            "Median_average_payment_installments": 2.5,
+            "Mean_customer_tenure_days": 87.82785589375746,
+            "Median_customer_tenure_days": 34.10270833333333,
+            "Total_Cluster_Spend": 890384.96,
+            "Average_Customer_Spend": 308.4118323519224
+        },
+        {
+            "Cluster": 3,
+            "Count": 17543,
+            "Percentage": 18.469037542374668,
+            "Mean_days_since_last_order": 247.25413919712625,
+            "Median_days_since_last_order": 222.9895138888889,
+            "Mean_total_orders": 1.0,
+            "Median_total_orders": 1.0,
+            "Mean_total_spend": 139.04829789659695,
+            "Median_total_spend": 99.43,
+            "Mean_average_review_score": 1.849056603773585,
+            "Median_average_review_score": 1.0,
+            "Mean_average_payment_installments": 2.214444507780881,
+            "Median_average_payment_installments": 1.0,
+            "Mean_customer_tenure_days": 0.0,
+            "Median_customer_tenure_days": 0.0,
+            "Total_Cluster_Spend": 2439324.29,
+            "Average_Customer_Spend": 139.04829789659695
+        }
+    ],
+    "insights": [
+        "Cluster 0 contributes the most overall revenue, despite not necessarily having the highest average spend.",
+        "Cluster 1 has the highest average customer spend per capita (High-Value cohort).",
+        "Cluster 2 contains the most frequent repeat buyers.",
+        "Cluster 1 represents the most inactive, churning segment with the longest days since last order.",
+        "Cluster 0 has the highest average review satisfaction scores."
+    ],
+    "algorithm_comparison": [
+        {
+            "Algorithm": "K-Means",
+            "K": 4,
+            "Silhouette": 0.30709325285502825,
+            "Largest Cluster %": 61.29,
+            "Smallest Cluster %": 3.11
+        },
+        {
+            "Algorithm": "Agglomerative (Ward)",
+            "K": 4,
+            "Silhouette": 0.2648220810537279,
+            "Largest Cluster %": 66.205,
+            "Smallest Cluster %": 3.11
+        }
+    ],
+    "final_selected_algorithm": "K-Means",
+    "final_cluster_names": {
+        "0": {
+            "name": "Mainstream Recent Buyers",
+            "justification": "Recent, standard spend, high satisfaction."
+        },
+        "1": {
+            "name": "One-Time High-Spenders",
+            "justification": "Low frequency but massive single-purchase monetary value."
+        },
+        "2": {
+            "name": "Frequent High-Value Buyers",
+            "justification": "Highest repeat purchase rate and monetary value."
+        },
+        "3": {
+            "name": "Unsatisfied Buyers",
+            "justification": "Significantly lower review scores indicating churn due to poor experience."
+        }
+    }
+}

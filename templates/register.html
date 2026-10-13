@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="min-height: calc(100vh - 80px); display: flex; align-items: center; justify-content: center; padding: 2rem;">
+    <div style="background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); padding: 2.5rem; border-radius: 16px; width: 100%; max-width: 420px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h2 style="color: #fff; margin-bottom: 2rem; text-align: center; font-size: 28px; font-weight: 700;">Create Company</h2>
+        
+        {% if error %}
+        <div style="background: rgba(255, 71, 87, 0.1); border-left: 4px solid #ff4757; color: #ff4757; padding: 1rem; margin-bottom: 1.5rem; border-radius: 4px; font-size: 14px;">
+            {{ error }}
+        </div>
+        {% endif %}
+        
+        <form method="POST" action="/register">
+            <div style="margin-bottom: 1.25rem;">
+                <label style="display: block; color: rgba(255,255,255,0.7); margin-bottom: 0.5rem; font-size: 14px; font-weight: 500;">Company Name</label>
+                <input type="text" name="company_name" placeholder="Acme Corp" required style="width: 100%; padding: 0.875rem; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-family: inherit; font-size: 15px; outline: none; box-sizing: border-box;">
+            </div>
+
+            <div style="margin-bottom: 1.25rem;">
+                <label style="display: block; color: rgba(255,255,255,0.7); margin-bottom: 0.5rem; font-size: 14px; font-weight: 500;">Admin Email</label>
+                <input type="email" name="email" placeholder="admin@acme.com" required style="width: 100%; padding: 0.875rem; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-family: inherit; font-size: 15px; outline: none; box-sizing: border-box;">
+            </div>
+            
+            <div style="margin-bottom: 2rem;">
+                <label style="display: block; color: rgba(255,255,255,0.7); margin-bottom: 0.5rem; font-size: 14px; font-weight: 500;">Password</label>
+                <input type="password" name="password" placeholder="••••••••" required style="width: 100%; padding: 0.875rem; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-family: inherit; font-size: 15px; outline: none; box-sizing: border-box;">
+            </div>
+            
+            <button type="submit" style="width: 100%; padding: 1rem; background: linear-gradient(135deg, #2ed573 0%, #7bed9f 100%); color: #000; border: none; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 15px rgba(46, 213, 115, 0.3);">
+                Complete Registration
+            </button>
+        </form>
+        
+        <div style="margin-top: 2rem; text-align: center; color: rgba(255,255,255,0.6); font-size: 14px;">
+            Already have a company account? <br>
+            <a href="/login" style="color: #2ed573; text-decoration: none; font-weight: 600; display: inline-block; margin-top: 0.5rem; transition: color 0.2s;">Log in here</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

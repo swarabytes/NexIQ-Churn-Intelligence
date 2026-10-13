@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="predict-container anim-fade-in">
+    <div class="form-panel glass-card">
+        <h2>Risk Prediction Engine</h2>
+        <div class="form-actions">
+            <button id="btn-autofill" class="btn-secondary">Autofill Sample</button>
+            <button id="btn-paste-json" class="btn-secondary">Paste JSON</button>
+            <textarea id="json-input" placeholder='Paste JSON e.g. {"recency": 10, ...}' style="display:none;"></textarea>
+            <button id="btn-parse-json" style="display:none;" class="btn-primary">Apply JSON</button>
+        </div>
+        
+        <form id="predict-form" class="premium-form">
+            <div class="input-grid">
+                <div class="form-group">
+                    <label>Recency (Days)</label>
+                    <input type="number" id="recency" name="recency" step="any" required>
+                </div>
+                <div class="form-group">
+                    <label>Frequency (Orders)</label>
+                    <input type="number" id="frequency" name="frequency" step="any" required>
+                </div>
+                <div class="form-group">
+                    <label>Monetary (Spend $)</label>
+                    <input type="number" id="monetary" name="monetary" step="any" required>
+                </div>
+                <div class="form-group">
+                    <label>Avg Order Value ($)</label>
+                    <input type="number" id="average_order_value" name="average_order_value" step="any" required>
+                </div>
+                <div class="form-group">
+                    <label>Category Diversity</label>
+                    <input type="number" id="category_diversity" name="category_diversity" step="any" required>
+                </div>
+                <div class="form-group">
+                    <label>Avg Review Score</label>
+                    <input type="number" id="average_review_score" name="average_review_score" step="any" required>
+                </div>
+                <div class="form-group">
+                    <label>Payment Count</label>
+                    <input type="number" id="payment_count" name="payment_count" step="any" required>
+                </div>
+                <div class="form-group">
+                    <label>Delivery Delay (Days)</label>
+                    <input type="number" id="delivery_delay" name="delivery_delay" step="any" required>
+                </div>
+                <div class="form-group">
+                    <label>Inactivity Days</label>
+                    <input type="number" id="inactivity_days" name="inactivity_days" step="any" required>
+                </div>
+            </div>
+            <button type="submit" class="btn-primary w-full" id="btn-predict">Analyze Risk Potential</button>
+        </form>
+    </div>
+
+    <!-- RESULT SECTION -->
+    <div id="result-section" class="result-panel glass-card" style="display: none;">
+        <h3>AI Analysis Result</h3>
+        <div class="result-details">
+            <div class="header-result">
+                <span>Customer ID: <strong id="res-cust-id"></strong></span>
+                <span class="badge" id="res-badge"></span>
+            </div>
+            
+            <div class="gauge-container">
+                <div class="circular-progress" id="circular-progress">
+                    <div class="inner-circle" id="res-prob-anim">0%</div>
+                </div>
+                <p>Churn Probability</p>
+            </div>
+            
+            <div class="health-bar-container">
+                <p>Health Score</p>
+                <div class="health-bar-bg">
+                    <div class="health-bar-fill" id="res-health-fill"></div>
+                </div>
+            </div>
+
+            <div class="insight-box glass-card sub-card">
+                <h4>AI Insights</h4>
+                <p id="res-insight"></p>
+            </div>
+            
+            <div class="recommended-actions glass-card sub-card">
+                <h4>Recommended Actions</h4>
+                <ul id="res-actions"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

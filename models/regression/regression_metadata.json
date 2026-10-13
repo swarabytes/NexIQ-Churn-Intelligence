@@ -1,0 +1,72 @@
+{
+    "target": "order_freight_value",
+    "features": [
+        "product_weight_g",
+        "product_volume_cm3",
+        "order_item_count",
+        "customer_state",
+        "seller_state",
+        "product_category",
+        "order_month",
+        "order_weekday"
+    ],
+    "excluded_features": [
+        "seller_id",
+        "customer_unique_id",
+        "payment_value",
+        "actual_delivery_date",
+        "review_score"
+    ],
+    "split_strategy": "GroupShuffleSplit by seller_id (test_size=0.20)",
+    "random_state": 42,
+    "models_trained": [
+        "Simple Linear Regression",
+        "Multiple Linear Regression",
+        "Lasso",
+        "Ridge",
+        "Elastic Net"
+    ],
+    "best_model": "Multiple Linear Regression",
+    "metrics": [
+        {
+            "Model": "Multiple Linear Regression",
+            "R2": 0.5468288879077521,
+            "Adjusted_R2": 0.5441682454734058,
+            "MAE": 6.310063565554845,
+            "MSE": 217.22220510513878,
+            "RMSE": 14.738460065595007
+        },
+        {
+            "Model": "Ridge",
+            "R2": 0.5468246377759929,
+            "Adjusted_R2": 0.5441639703884211,
+            "MAE": 6.309447485908528,
+            "MSE": 217.2242423554579,
+            "RMSE": 14.738529178837958
+        },
+        {
+            "Model": "Lasso",
+            "R2": 0.5441479920178269,
+            "Adjusted_R2": 0.5414716096009962,
+            "MAE": 6.314575759039329,
+            "MSE": 218.50726079674763,
+            "RMSE": 14.781991097167785
+        },
+        {
+            "Model": "Elastic Net",
+            "R2": 0.5381504955545922,
+            "Adjusted_R2": 0.535438900845618,
+            "MAE": 6.339569714835109,
+            "MSE": 221.38208969049435,
+            "RMSE": 14.878914264505134
+        },
+        {
+            "Model": "Simple Linear Regression",
+            "R2": 0.32013966166525143,
+            "Adjusted_R2": 0.3201117149254835,
+            "MAE": 8.432524328272052,
+            "MSE": 325.8830007384447,
+            "RMSE": 18.05222979962433
+        }
+    ]
+}
