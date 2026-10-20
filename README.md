@@ -1,7 +1,9 @@
-# Churn Predict - Customer Churn Prediction Dashboard
+# NexIQ - Customer Churn Intelligence Platform
+
+An intelligent customer churn prediction platform leveraging machine learning to identify at-risk customers, analyze customer behavior, visualize churn patterns, and generate actionable insights to improve customer retention and support data-driven business decisions.
 
 ## 🚀 Project Overview
-**ChurnPredict** is an end-to-end Machine Learning web application designed to help business stakeholders and e-commerce platforms identify and retain customers at risk of leaving. Unlike basic ML scripts, this platform features a professional-grade executive dashboard, real-time API predictions, bulk data upload processing, and secure data persistence scoped per company.
+**NexIQ** is an end-to-end Machine Learning web application designed to help business stakeholders and e-commerce platforms identify and retain customers at risk of leaving. Unlike basic ML scripts, this platform features a professional-grade executive dashboard, real-time API predictions, bulk data upload processing, and secure data persistence scoped per company.
 
 It uses a machine learning model trained on historical customer data to calculate risk probabilities, segment customers into risk categories, and provide actionable retention playbooks.
 
