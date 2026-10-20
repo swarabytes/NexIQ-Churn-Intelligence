@@ -59,7 +59,7 @@ VALID_MODELS  = {
     'regression':       {'simple_linear', 'multiple_linear', 'lasso', 'ridge', 'elastic_net', 'compare_all'},
     'clustering':       {'kmeans', 'agglomerative'},
     'association_rules':{'apriori'},
-    'olap':             {'rollup', 'drilldown', 'slice', 'dice'}
+    'olap':             {'rollup', 'drilldown', 'slice', 'dice', 'pivot'}
 }
 
 def validate_request(analysis_type, model, params):
@@ -678,18 +678,96 @@ def run_clustering(model_name, params):
         dendro_data = None
         dendro_sample = None
         try:
-            from scipy.cluster.hierarchy import linkage as scipy_linkage
-            sample_sub = X_scaled[:50]
-            Z = scipy_linkage(sample_sub, method=linkage if linkage in ('ward','complete','average','single') else 'ward')
-            top_dists = [round(float(d), 3) for d in Z[:, 2][-15:]]
+            from scipy.cluster.hierarchy import linkage as scipy_linkage, dendrogram as scipy_dendrogram
+            import io, base64
+            import matplotlib
+            matplotlib.use('Agg')
+            import matplotlib.pyplot as plt
+
+            # Representative sample for dendrogram
+            n_dendro = min(len(X_scaled), 150)
+            sample_sub = X_scaled[:n_dendro]
+            method_name = linkage if linkage in ('ward', 'complete', 'average', 'single') else 'ward'
+            Z = scipy_linkage(sample_sub, method=method_name)
+
+            # Determine cut distance for n_clusters
+            k_clamped = max(2, min(n_clusters, len(Z)))
+            cut_idx = len(Z) - (k_clamped - 1)
+            if 0 < cut_idx < len(Z):
+                cut_distance = float((Z[cut_idx, 2] + Z[cut_idx - 1, 2]) / 2.0)
+            elif len(Z) > 0:
+                cut_distance = float(Z[-1, 2] * 0.7)
+            else:
+                cut_distance = 1.0
+
+            p_val = min(30, n_dendro)
+
+            # Compute tree coordinates
+            dendro_dict = scipy_dendrogram(Z, truncate_mode='lastp', p=p_val, no_plot=True)
+            icoord = [[float(x) for x in branch] for branch in dendro_dict['icoord']]
+            dcoord = [[float(y) for y in branch] for branch in dendro_dict['dcoord']]
+
+            # Render publication-quality high-res image
+            fig, ax = plt.subplots(figsize=(10, 5), dpi=120)
+            fig.patch.set_facecolor('#ffffff')
+            ax.set_facecolor('#f8fafc')
+            scipy_dendrogram(
+                Z,
+                truncate_mode='lastp',
+                p=p_val,
+                ax=ax,
+                show_leaf_counts=True,
+                color_threshold=cut_distance,
+                above_threshold_color='#64748b'
+            )
+            ax.axhline(
+                y=cut_distance,
+                color='#ef4444',
+                linestyle='--',
+                linewidth=1.8,
+                label=f'K={n_clusters} Cut Threshold (d ≈ {cut_distance:.2f})'
+            )
+            ax.set_title(
+                f'Hierarchical Clustering Dendrogram ({method_name.capitalize()} Linkage, K={n_clusters})',
+                fontsize=12,
+                fontweight='bold',
+                pad=12,
+                color='#0f172a'
+            )
+            ax.set_xlabel('Customer sample (Cluster Size or Index)', fontsize=10, labelpad=8, color='#334155')
+            ax.set_ylabel('Linkage Merge Distance', fontsize=10, labelpad=8, color='#334155')
+            ax.tick_params(axis='x', rotation=45, labelsize=9)
+            ax.tick_params(axis='y', labelsize=9)
+            ax.grid(axis='y', linestyle=':', alpha=0.6, color='#cbd5e1')
+            ax.legend(loc='upper right', frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1', fontsize=9)
+            plt.tight_layout()
+
+            buf = io.BytesIO()
+            fig.savefig(buf, format='png', bbox_inches='tight', dpi=120)
+            plt.close(fig)
+            buf.seek(0)
+            dendro_image = f"data:image/png;base64,{base64.b64encode(buf.read()).decode('utf-8')}"
+
+            top_dists = [round(float(d), 3) for d in Z[:, 2][-20:]]
             dendro_sample = top_dists
             dendro_data = {
                 'merges': len(Z),
+                'n_samples': n_dendro,
+                'p': p_val,
+                'cut_distance': round(cut_distance, 3),
+                'n_clusters': n_clusters,
+                'linkage': method_name,
+                'icoord': icoord,
+                'dcoord': dcoord,
+                'ivl': dendro_dict['ivl'],
+                'color_list': dendro_dict['color_list'],
                 'top_distances': top_dists,
-                'note': 'Hierarchical linkage computed on a representative 50-customer sample for responsive interactive rendering.'
+                'image': dendro_image,
+                'note': f'Hierarchical linkage computed on {n_dendro} representative customers. Tree truncated to top {p_val} merges for clarity.'
             }
-        except Exception:
-            dendro_data = None
+        except Exception as e:
+            import traceback
+            dendro_data = {'error': str(e), 'traceback': traceback.format_exc()}
             dendro_sample = None
 
         extra = {
@@ -1051,20 +1129,73 @@ def run_olap(model_name, params):
         if cats_filter:   filters_str.append(f"category IN ({cats_filter})")
         query = f"SELECT year, state, category, SUM(order_count), SUM(total_sales) FROM olap_summary WHERE {' AND '.join(filters_str) or '1=1'} GROUP BY year, state, category;"
 
+    elif operation == 'pivot':
+        # Pivot (Rotate): Cross-tabulate two dimensions
+        row_dim = params.get('row_dim', 'state')
+        col_dim = params.get('col_dim', 'year')
+        measure = params.get('measure', 'total_sales')
+
+        allowed_dims = ['year', 'quarter', 'state', 'category']
+        if row_dim not in allowed_dims:
+            row_dim = 'state'
+        if col_dim not in allowed_dims:
+            col_dim = 'year'
+        if row_dim == col_dim:
+            col_dim = 'year' if row_dim != 'year' else 'quarter'
+
+        allowed_measures = ['order_count', 'customer_count', 'item_count', 'total_sales']
+        if measure not in allowed_measures:
+            measure = 'total_sales' if 'total_sales' in df.columns else 'order_count'
+
+        from olap_engine import pivot_data
+        pivot_table = pivot_data(df, row_dim=row_dim, col_dim=col_dim, measure=measure, aggfunc='sum')
+        pivot_table['Total'] = pivot_table.sum(axis=1)
+        pivot_table = pivot_table.sort_values(by='Total', ascending=False)
+
+        col_names = [str(c) for c in pivot_table.columns if c != 'Total']
+
+        if measure in ('order_count', 'customer_count', 'item_count'):
+            pivot_table = pivot_table.round(0).astype(int)
+        else:
+            pivot_table = pivot_table.round(2)
+
+        result_df = pivot_table.reset_index()
+        result_df.columns = [str(c) for c in result_df.columns]
+        data = result_df.to_dict(orient='records')
+        dimension = f"{row_dim} × {col_dim}"
+
+        case_clauses = ",\n       ".join([
+            f'SUM(CASE WHEN {col_dim} = {repr(c) if isinstance(c, str) else c} THEN {measure} ELSE 0 END) AS "{c}"'
+            for c in col_names
+        ])
+        query = f"""-- OLAP Cross-Tabulation (Pivot / Rotate) --
+SELECT {row_dim},
+       {case_clauses},
+       SUM({measure}) AS "Total"
+FROM olap_summary
+GROUP BY {row_dim}
+ORDER BY "Total" DESC;"""
+
     else:
         return {'success': False, 'error': f"Unknown OLAP operation: {operation}"}
 
     train_time = round(time.time() - t0, 3)
 
-    total_orders = sum(r.get('order_count', 0) for r in data)
-    total_sales  = sum(r.get('total_sales', 0) for r in data)
-    total_customers = sum(r.get('customer_count', 0) for r in data)
+    if operation == 'pivot':
+        total_orders = int(df['order_count'].sum()) if 'order_count' in df.columns else 0
+        total_sales  = float(df['total_sales'].sum()) if 'total_sales' in df.columns else 0.0
+        total_customers = int(df['customer_count'].sum()) if 'customer_count' in df.columns else 0
+    else:
+        total_orders = sum(r.get('order_count', 0) for r in data)
+        total_sales  = sum(r.get('total_sales', 0) for r in data)
+        total_customers = sum(r.get('customer_count', 0) for r in data)
 
     op_display = {
         'rollup':    'Roll-Up',
         'drilldown': 'Drill-Down',
         'slice':     'Slice',
-        'dice':      'Dice'
+        'dice':      'Dice',
+        'pivot':     'Pivot (Rotate)'
     }.get(operation, operation)
 
     query_repr = f"""-- Analytical Query Representation --
@@ -1077,8 +1208,9 @@ Measure:    {measure}
 Level:      {level}
 Records:    {len(data)}"""
 
-    interp = (f"**{op_display}** on the **{dimension}** dimension returned **{len(data)} records**. "
-              f"Total orders: **{int(total_orders):,}**, Total sales: **R$ {total_sales:,.2f}**, "
+    interp = (f"**{op_display}** cross-tabulated **{row_dim if operation == 'pivot' else dimension}** "
+              f"{'by **' + col_dim + '**' if operation == 'pivot' else ''} analyzing **{measure}** returning **{len(data)} rows**. "
+              f"Total cube orders: **{int(total_orders):,}**, Total sales: **R$ {total_sales:,.2f}**, "
               f"Total customers: **{int(total_customers):,}**.")
 
     return {

@@ -118,15 +118,38 @@ X_scaled_2k  = X_scaled[sample_2k_idx]
 # 3. DENDROGRAM (N=2000)
 # ============================================================
 print("Generating Dendrogram (N=2000)...")
-plt.figure(figsize=(10, 6))
 ward_linkage = linkage(X_scaled_2k, method='ward')
-dendrogram(ward_linkage, truncate_mode='lastp', p=30, show_leaf_counts=True)
-plt.title('Hierarchical Clustering Dendrogram (Ward Linkage, N=2000 sample)')
-plt.xlabel('Customer sample (Cluster Size or Index)')
-plt.ylabel('Distance')
+cut_distance = float((ward_linkage[-3, 2] + ward_linkage[-4, 2]) / 2.0)
+
+fig, ax = plt.subplots(figsize=(12, 7), dpi=300)
+fig.patch.set_facecolor('#ffffff')
+ax.set_facecolor('#f8fafc')
+dendrogram(
+    ward_linkage,
+    truncate_mode='lastp',
+    p=35,
+    ax=ax,
+    show_leaf_counts=True,
+    leaf_rotation=45,
+    leaf_font_size=9,
+    color_threshold=cut_distance,
+    above_threshold_color='#475569'
+)
+ax.axhline(
+    y=cut_distance,
+    color='#dc2626',
+    linestyle='--',
+    linewidth=2.0,
+    label=f'K=4 Cut Threshold (d ≈ {cut_distance:.2f})'
+)
+ax.set_title('Agglomerative Hierarchical Clustering Dendrogram (Ward Linkage, N=2000)', fontsize=13, fontweight='bold', pad=14, color='#0f172a')
+ax.set_xlabel('Customer sample / Leaf Nodes (Counts in Parentheses)', fontsize=10, labelpad=8, color='#334155')
+ax.set_ylabel('Ward Linkage Distance', fontsize=10, labelpad=8, color='#334155')
+ax.grid(axis='y', linestyle='--', alpha=0.5, color='#cbd5e1')
+ax.legend(loc='upper right', frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1', fontsize=9.5)
 plt.tight_layout()
-plt.savefig(os.path.join(RESULTS_DIR, 'agglomerative_dendrogram.png'))
-plt.close()
+plt.savefig(os.path.join(RESULTS_DIR, 'agglomerative_dendrogram.png'), dpi=300, bbox_inches='tight')
+plt.close(fig)
 
 # ============================================================
 # 4. AGGLOMERATIVE CLUSTERING (N=20000)

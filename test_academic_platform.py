@@ -119,7 +119,8 @@ class TestAcademicAnalytics(unittest.TestCase):
             ('rollup', {'dimension': 'time', 'level': 'year'}),
             ('drilldown', {'year': '2018'}),
             ('slice', {'dimension': 'geography', 'state': 'SP'}),
-            ('dice', {'states': ['SP', 'RJ'], 'years': [2018]})
+            ('dice', {'states': ['SP', 'RJ'], 'years': [2018]}),
+            ('pivot', {'row_dim': 'state', 'col_dim': 'year', 'measure': 'total_sales'})
         ]:
             res = self.client.post('/api/academic/run', json={
                 'analysis_type': 'olap',

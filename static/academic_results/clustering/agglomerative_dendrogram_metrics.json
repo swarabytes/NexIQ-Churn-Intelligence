@@ -1,0 +1,23 @@
+{
+  "algorithm": "AgglomerativeClustering",
+  "linkage": "ward",
+  "metric": "euclidean",
+  "n_samples": 2000,
+  "total_population": 94986,
+  "k_optimal": 4,
+  "cut_distance": 46.067,
+  "cophenetic_correlation": 0.6173,
+  "silhouette_k4": 0.3192,
+  "cluster_sizes": {
+    "Cluster_1": 56,
+    "Cluster_2": 261,
+    "Cluster_3": 214,
+    "Cluster_4": 1469
+  },
+  "cluster_percentages": {
+    "Cluster_1": 2.8,
+    "Cluster_2": 13.05,
+    "Cluster_3": 10.7,
+    "Cluster_4": 73.45
+  }
+}

@@ -590,6 +590,38 @@ def academic_olap():
             }
         })
 
+    elif operation == 'pivot':
+        row_dim = request.args.get('row_dim', 'state')
+        col_dim = request.args.get('col_dim', 'year')
+        measure = request.args.get('measure', 'total_sales')
+        summary_csv = os.path.join('data', 'olap', 'olap_summary.csv')
+        pivot_records = []
+        col_names = []
+        if os.path.exists(summary_csv):
+            try:
+                from olap_engine import pivot_data
+                df_summary = pd.read_csv(summary_csv)
+                pt = pivot_data(df_summary, row_dim=row_dim, col_dim=col_dim, measure=measure)
+                pt['Total'] = pt.sum(axis=1)
+                pt = pt.sort_values(by='Total', ascending=False)
+                col_names = [str(c) for c in pt.columns if c != 'Total']
+                pt_reset = pt.reset_index()
+                pt_reset.columns = [str(c) for c in pt_reset.columns]
+                pivot_records = pt_reset.to_dict(orient='records')
+            except Exception as e:
+                pass
+
+        return jsonify({
+            "operation": "pivot",
+            "pivot": {
+                "row_dim": row_dim,
+                "col_dim": col_dim,
+                "measure": measure,
+                "columns": col_names,
+                "data": pivot_records
+            }
+        })
+
     if operation and operation in meta.get('operations', {}):
         return jsonify({operation: meta['operations'][operation]})
     return jsonify(meta)

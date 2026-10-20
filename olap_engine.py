@@ -1,8 +1,8 @@
 """
 OLAP Engine — Olist Analytics
 ==============================
-Provides reusable functions for Roll-Up, Drill-Down, Slice, and Dice
-operations on the Olist analytical cube.
+Provides reusable functions for Roll-Up, Drill-Down, Slice, Dice,
+and Pivot (Rotate) operations on the Olist analytical cube.
 Completely isolated from the churn prediction pipeline.
 """
 
@@ -101,3 +101,37 @@ def dice_data(df, filters):
     for col, values in filters.items():
         mask &= df[col].isin(values)
     return df[mask].copy()
+
+
+# ============================================================
+# PIVOT (ROTATE)
+# ============================================================
+def pivot_data(df, row_dim, col_dim, measure='total_sales', aggfunc='sum'):
+    """
+    Pivot (Rotate) axes of the analytical cube to cross-tabulate two dimensions.
+
+    Parameters
+    ----------
+    df : pd.DataFrame — The analytical cube or summary dataset.
+    row_dim : str — Dimension along rows (e.g. 'state', 'category', 'year').
+    col_dim : str — Dimension along columns (e.g. 'year', 'quarter', 'state').
+    measure : str — Metric column to aggregate (e.g. 'total_sales', 'order_count').
+    aggfunc : str or callable — Aggregation function (default 'sum').
+
+    Returns
+    -------
+    pd.DataFrame — Cross-tabulated pivot matrix.
+    """
+    if row_dim == col_dim:
+        col_dim = 'year' if row_dim != 'year' else 'quarter'
+
+    pivot_table = pd.pivot_table(
+        df,
+        index=row_dim,
+        columns=col_dim,
+        values=measure,
+        aggfunc=aggfunc,
+        fill_value=0
+    )
+    return pivot_table
+

@@ -29,6 +29,7 @@ tests = [
     {'analysis_type':'olap',          'model':'drilldown',          'parameters':{'year':'2018'}},
     {'analysis_type':'olap',          'model':'slice',              'parameters':{'dimension':'geography','state':'SP'}},
     {'analysis_type':'olap',          'model':'dice',               'parameters':{'states':['SP','RJ'],'years':[2017,2018],'categories':['bed_bath_table']}},
+    {'analysis_type':'olap',          'model':'pivot',              'parameters':{'row_dim':'state','col_dim':'year','measure':'total_sales'}},
 ]
 
 print('\n--- /api/academic/run ---')

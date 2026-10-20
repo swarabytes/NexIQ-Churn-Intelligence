@@ -49,7 +49,8 @@ const MODEL_MAP = {
     { value: 'rollup',    label: '⬆️ Roll-Up' },
     { value: 'drilldown', label: '⬇️ Drill-Down' },
     { value: 'slice',     label: '🔪 Slice' },
-    { value: 'dice',      label: '🎲 Dice' }
+    { value: 'dice',      label: '🎲 Dice' },
+    { value: 'pivot',     label: '🔄 Pivot (Rotate)' }
   ]
 };
 
@@ -150,7 +151,12 @@ const PARAMS_DEF = {
     { id: 'category', label: 'Category (if Product)', type: 'text', default: '', hint: 'e.g. bed_bath_table' },
     { id: 'measure', label: 'Measure', type: 'select', options: ['order_count', 'total_sales', 'customer_count'], default: 'order_count' }
   ],
-  dice: []  // Dice has dynamic multi-select — handled separately
+  dice: [],  // Dice has dynamic multi-select — handled separately
+  pivot: [
+    { id: 'row_dim', label: 'Row Dimension', type: 'select', options: ['state', 'category', 'year', 'quarter'], default: 'state' },
+    { id: 'col_dim', label: 'Column Dimension (Rotate)', type: 'select', options: ['year', 'quarter', 'state', 'category'], default: 'year' },
+    { id: 'measure', label: 'Measure', type: 'select', options: ['total_sales', 'order_count', 'customer_count', 'item_count'], default: 'total_sales' }
+  ]
 };
 
 // ─── INIT ─────────────────────────────────────────────────────
@@ -1066,20 +1072,107 @@ function renderClustering(data) {
     }, 200);
   }
 
-  // Agglomerative dendrogram sample
-  if (data.extra && data.extra.dendrogram_sample) {
-    const dendCanvasId = 'chart_dendrogram';
-    grid.innerHTML += chartCardHTMLWithAction('Linkage Merge Distances (Dendrogram Sample)', dendCanvasId, 'chart_dendrogram', 'Dendrogram');
-    const dend = data.extra.dendrogram_sample;
+  // Agglomerative Hierarchical Dendrogram
+  if (data.extra && (data.extra.dendrogram || data.extra.dendrogram_sample)) {
+    const dendro = data.extra.dendrogram || {};
+    const linkageMethod = (data.extra.linkage || 'Ward').toUpperCase();
+    const nClusters = data.parameters?.n_clusters || dendro.n_clusters || 4;
+    const cutDist = (dendro.cut_distance !== undefined && dendro.cut_distance !== null) ? dendro.cut_distance : 'N/A';
+    window._lastDendroData = dendro;
+    window._lastDendroK = nClusters;
+
+    grid.innerHTML += `
+      <div class="chart-card" id="dendrogram_card" style="grid-column: 1 / -1;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem;flex-wrap:wrap;gap:0.5rem;">
+          <div>
+            <div class="chart-card-title">🌳 Hierarchical Clustering Dendrogram (${linkageMethod} Linkage)</div>
+            <p style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">
+              Bottom-up cluster merges. Red dashed line indicates the <strong>K = ${nClusters}</strong> cut threshold at merge distance <strong>d ≈ ${cutDist}</strong>.
+            </p>
+          </div>
+          <div class="olap-view-toggle">
+            <button class="olap-toggle-btn active" onclick="switchDendroView('Image', this)">🖼️ Publication Plot</button>
+            <button class="olap-toggle-btn" onclick="switchDendroView('Canvas', this)">✨ Interactive Canvas</button>
+            <button class="olap-toggle-btn" onclick="switchDendroView('MergeDist', this)">📊 Merge Distances</button>
+          </div>
+        </div>
+
+        <!-- 1. Publication Plot View -->
+        <div id="dendroImageView" style="text-align:center;padding:0.5rem 0;">
+          <div style="background:#ffffff;border:1px solid var(--border);border-radius:var(--radius-md);padding:0.75rem;display:inline-block;max-width:100%;box-shadow:var(--shadow-sm);">
+            <img id="dendroImgElement" src="${dendro.image || '/static/academic_results/clustering/agglomerative_dendrogram.png'}" 
+                 alt="Hierarchical Clustering Dendrogram" 
+                 style="max-width:100%;height:auto;border-radius:var(--radius-sm);display:block;margin:0 auto;" />
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.6rem;padding:0 0.5rem;font-size:0.75rem;color:var(--text-muted);">
+              <span>${dendro.note || 'Hierarchical clustering tree with cluster cut-off line'}</span>
+              <a href="${dendro.image || '/static/academic_results/clustering/agglomerative_dendrogram.png'}" download="hierarchical_dendrogram.png" class="chart-action-btn" style="text-decoration:none;">💾 Save Plot</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Interactive Canvas View -->
+        <div id="dendroCanvasView" class="hidden">
+          <div style="background:#ffffff;border:1px solid var(--border);border-radius:var(--radius-md);padding:1rem;position:relative;">
+            <div style="height:380px;position:relative;">
+              <canvas id="chart_dendrogram_tree" style="width:100%;height:100%;display:block;"></canvas>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.6rem;font-size:0.75rem;color:var(--text-muted);">
+              <span>Interactive vector tree (truncated to top ${dendro.p || 30} leaf nodes)</span>
+              <span style="color:#ef4444;font-weight:600;">── Cut Line: K=${nClusters} (d=${cutDist})</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Scree / Merge Distances View -->
+        <div id="dendroMergeDistView" class="hidden">
+          <div style="height:300px;">
+            <canvas id="chart_dendrogram_distances"></canvas>
+          </div>
+        </div>
+      </div>
+    `;
+
     setTimeout(() => {
-      const ctx = document.getElementById(dendCanvasId);
-      if (!ctx) return;
-      const c = new Chart(ctx, { type: 'bar', data: { labels: dend.map((_, i) => `Merge ${i+1}`),
-        datasets: [{ label: 'Merge Distance', data: dend, backgroundColor: '#7c3aedaa', borderRadius: 3 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, title: { display: true, text: 'Linkage Distance' } } } } });
-      STATE.charts.push(c);
-    }, 250);
+      if (dendro.icoord && dendro.dcoord) {
+        drawInteractiveDendrogram('chart_dendrogram_tree', dendro, nClusters);
+      }
+
+      const dists = dendro.top_distances || data.extra.dendrogram_sample || [];
+      const distCtx = document.getElementById('chart_dendrogram_distances');
+      if (distCtx && dists.length) {
+        const c = new Chart(distCtx, {
+          type: 'bar',
+          data: {
+            labels: dists.map((_, i) => `Merge ${i + 1}`),
+            datasets: [{
+              label: 'Linkage Merge Distance',
+              data: dists,
+              backgroundColor: dists.map(d => (cutDist !== 'N/A' && d >= cutDist) ? '#ef4444cc' : '#7c3aedaa'),
+              borderColor: dists.map(d => (cutDist !== 'N/A' && d >= cutDist) ? '#ef4444' : '#7c3aed'),
+              borderWidth: 1.5,
+              borderRadius: 3
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: ctx2 => ` Distance: ${ctx2.parsed.y} ${cutDist !== 'N/A' && ctx2.parsed.y >= cutDist ? '(Above K Cutoff)' : ''}`
+                }
+              }
+            },
+            scales: {
+              y: { beginAtZero: true, title: { display: true, text: 'Linkage Distance' } },
+              x: { title: { display: true, text: 'Consecutive Merges (Scree Step)' }, ticks: { font: { size: 10 } } }
+            }
+          }
+        });
+        STATE.charts.push(c);
+      }
+    }, 120);
   }
 
   setTable(data.cluster_profiles || []);
@@ -1174,6 +1267,8 @@ function renderOlap(data) {
 
   if (!rawData.length) {
     grid.innerHTML = `<div class="chart-card" style="grid-column:1/-1;text-align:center;padding:2rem;color:#64748b;">No data returned for these filters.</div>`;
+  } else if (data.model_key === 'pivot' || (data.operation && data.operation.toLowerCase().includes('pivot'))) {
+    renderPivotOlap(data, rawData, grid);
   } else {
     const allKeys = Object.keys(rawData[0]);
     const dimKey = allKeys.find(k => !['order_count','customer_count','item_count','total_sales','avg_order_value'].includes(k)) || allKeys[0];
@@ -1225,6 +1320,160 @@ function renderOlap(data) {
   setTable(rawData);
 }
 
+function renderPivotOlap(data, rawData, grid) {
+  const allKeys = Object.keys(rawData[0]);
+  const rowDimKey = allKeys[0];
+  const colKeys = allKeys.filter(k => k !== rowDimKey && k !== 'Total');
+  const hasTotal = allKeys.includes('Total');
+  const measure = data.measure || (data.parameters && data.parameters.measure) || 'Measure';
+  const isCurrency = measure === 'total_sales' || measure.includes('sales');
+
+  const formatVal = (v) => {
+    if (v === null || v === undefined) return '0';
+    if (typeof v === 'number') {
+      return isCurrency ? `R$ ${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : v.toLocaleString();
+    }
+    return String(v);
+  };
+
+  const topRows = rawData.slice(0, 15);
+
+  grid.innerHTML = `
+    <div class="chart-card" style="grid-column:1/-1;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+        <div>
+          <div class="chart-card-title">🔄 PIVOT / ROTATE — ${rowDimKey.toUpperCase()} (Rows) × ${(data.parameters?.col_dim || 'COLUMNS').toUpperCase()}</div>
+          <p style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">Metric: <strong>${measure.replace('_', ' ')}</strong> aggregated across rotated dimensions</p>
+        </div>
+        <div class="olap-view-toggle">
+          <button class="olap-toggle-btn active" onclick="switchOlapView('Chart', this)">📊 Grouped Chart</button>
+          <button class="olap-toggle-btn" onclick="switchOlapView('Table', this)">📋 Cross-Tab Pivot Table</button>
+          <button class="olap-toggle-btn" onclick="switchOlapView('Query', this)">🔤 SQL / CrossTab Query</button>
+        </div>
+      </div>
+
+      <!-- Chart View -->
+      <div id="olapChartView">
+        <div style="height:320px;">
+          <canvas id="chart_olap_pivot_main"></canvas>
+        </div>
+        ${hasTotal ? `
+        <div style="height:220px;margin-top:1.25rem;">
+          <canvas id="chart_olap_pivot_total"></canvas>
+        </div>` : ''}
+      </div>
+
+      <!-- Pivot Table View -->
+      <div id="olapTableView" class="hidden">
+        <div class="table-wrapper" style="max-height:480px;overflow:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="background:var(--bg-subtle);font-weight:700;position:sticky;left:0;z-index:2;">${rowDimKey.toUpperCase()}</th>
+                ${colKeys.map(c => `<th>${c}</th>`).join('')}
+                ${hasTotal ? `<th style="background:rgba(5,150,105,0.1);color:#059669;font-weight:700;">TOTAL</th>` : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${rawData.map(r => `
+                <tr>
+                  <td style="font-weight:600;background:var(--bg-subtle);position:sticky;left:0;z-index:1;">${r[rowDimKey]}</td>
+                  ${colKeys.map(c => `<td>${formatVal(r[c])}</td>`).join('')}
+                  ${hasTotal ? `<td style="font-weight:700;background:rgba(5,150,105,0.06);color:#059669;">${formatVal(r['Total'])}</td>` : ''}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Query View -->
+      <div id="olapQueryView" class="hidden">
+        ${data.query_representation ? `<pre class="query-code">${escHtml(data.query_representation)}</pre>` : '<em style="color:#64748b;">No query representation available.</em>'}
+      </div>
+    </div>
+  `;
+
+  setTimeout(() => {
+    const ctx = document.getElementById('chart_olap_pivot_main');
+    if (!ctx) return;
+
+    const labels = topRows.map(r => String(r[rowDimKey]));
+    const datasets = colKeys.map((cKey, idx) => ({
+      label: String(cKey),
+      data: topRows.map(r => Number(r[cKey]) || 0),
+      backgroundColor: PALETTE[idx % PALETTE.length] + 'cc',
+      borderColor: PALETTE[idx % PALETTE.length],
+      borderWidth: 1.5,
+      borderRadius: 4
+    }));
+
+    const chart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx2) => ` ${ctx2.dataset.label}: ${isCurrency ? 'R$ ' + ctx2.parsed.y.toLocaleString(undefined, {minimumFractionDigits: 2}) : ctx2.parsed.y.toLocaleString()}`
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: measure.replace('_', ' ') }
+          },
+          x: {
+            ticks: { maxRotation: 40, font: { size: 10 } }
+          }
+        }
+      }
+    });
+    STATE.charts.push(chart);
+
+    if (hasTotal) {
+      const ctxTotal = document.getElementById('chart_olap_pivot_total');
+      if (ctxTotal) {
+        const totalChart = new Chart(ctxTotal, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{
+              label: `Total ${measure.replace('_', ' ')}`,
+              data: topRows.map(r => Number(r['Total']) || 0),
+              backgroundColor: '#059669cc',
+              borderColor: '#059669',
+              borderWidth: 1.5,
+              borderRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx2) => ` Total: ${isCurrency ? 'R$ ' + ctx2.parsed.y.toLocaleString(undefined, {minimumFractionDigits: 2}) : ctx2.parsed.y.toLocaleString()}`
+                }
+              }
+            },
+            scales: {
+              y: { beginAtZero: true, title: { display: true, text: `Total ${measure.replace('_', ' ')}` } },
+              x: { ticks: { maxRotation: 40, font: { size: 10 } } }
+            }
+          }
+        });
+        STATE.charts.push(totalChart);
+      }
+    }
+  }, 60);
+}
+
 function switchOlapView(view, btn) {
   ['olapChartView','olapTableView','olapQueryView'].forEach(id => {
     const el = document.getElementById(id);
@@ -1235,6 +1484,162 @@ function switchOlapView(view, btn) {
   const btns = btn?.closest('.olap-view-toggle')?.querySelectorAll('.olap-toggle-btn');
   if (btns) btns.forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
+}
+
+function switchDendroView(view, btn) {
+  ['dendroImageView', 'dendroCanvasView', 'dendroMergeDistView'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  });
+  const target = document.getElementById(`dendro${view}View`);
+  if (target) target.classList.remove('hidden');
+
+  const btns = btn?.closest('.olap-view-toggle')?.querySelectorAll('.olap-toggle-btn');
+  if (btns) btns.forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  if (view === 'Canvas' && window._lastDendroData) {
+    setTimeout(() => {
+      drawInteractiveDendrogram('chart_dendrogram_tree', window._lastDendroData, window._lastDendroK || 4);
+    }, 40);
+  }
+}
+
+function drawInteractiveDendrogram(canvasId, dendro, nClusters) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !dendro || !dendro.icoord || !dendro.dcoord) return;
+
+  const parent = canvas.parentElement;
+  const width = Math.floor(parent.clientWidth) || 750;
+  const height = Math.floor(parent.clientHeight) || 380;
+  const dpr = window.devicePixelRatio || 1;
+
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  canvas.style.width = width + 'px';
+  canvas.style.height = height + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const padL = 60, padR = 30, padT = 30, padB = 65;
+  const plotW = Math.max(10, width - padL - padR);
+  const plotH = Math.max(10, height - padT - padB);
+
+  const allX = dendro.icoord.flat();
+  const allY = dendro.dcoord.flat();
+  const minX = Math.min(...allX);
+  const maxX = Math.max(...allX);
+  const maxY = (Math.max(...allY) || 1) * 1.08;
+
+  const toX = x => padL + ((x - minX) / (maxX - minX || 1)) * plotW;
+  const toY = y => padT + (1 - (y / maxY)) * plotH;
+
+  ctx.clearRect(0, 0, width, height);
+
+  ctx.fillStyle = '#fafafa';
+  ctx.fillRect(padL, padT, plotW, plotH);
+
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1;
+  const numYTicks = 6;
+  ctx.font = '10px sans-serif';
+  ctx.fillStyle = '#64748b';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+
+  for (let i = 0; i <= numYTicks; i++) {
+    const val = (maxY / numYTicks) * i;
+    const yPos = toY(val);
+    ctx.beginPath();
+    ctx.setLineDash([2, 3]);
+    ctx.moveTo(padL, yPos);
+    ctx.lineTo(padL + plotW, yPos);
+    ctx.stroke();
+
+    ctx.fillText(val.toFixed(1), padL - 8, yPos);
+  }
+  ctx.setLineDash([]);
+
+  ctx.save();
+  ctx.translate(16, padT + plotH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.font = '600 11px sans-serif';
+  ctx.fillStyle = '#475569';
+  ctx.textAlign = 'center';
+  ctx.fillText('Linkage Distance', 0, 0);
+  ctx.restore();
+
+  const colorMap = {
+    'C0': '#2563eb', 'C1': '#ea580c', 'C2': '#16a34a', 'C3': '#dc2626',
+    'C4': '#9333ea', 'C5': '#854d0e', 'C6': '#db2777', 'C7': '#475569',
+    'b': '#2563eb',  'g': '#16a34a',  'r': '#dc2626',  'c': '#0891b2',
+    'm': '#c026d3',  'y': '#ca8a04',  'k': '#1e293b'
+  };
+
+  dendro.icoord.forEach((branchX, idx) => {
+    const branchY = dendro.dcoord[idx];
+    const rawColor = (dendro.color_list && dendro.color_list[idx]) || '#475569';
+    const strokeColor = colorMap[rawColor] || (rawColor.startsWith('#') ? rawColor : '#475569');
+
+    ctx.beginPath();
+    ctx.moveTo(toX(branchX[0]), toY(branchY[0]));
+    ctx.lineTo(toX(branchX[1]), toY(branchY[1]));
+    ctx.lineTo(toX(branchX[2]), toY(branchY[2]));
+    ctx.lineTo(toX(branchX[3]), toY(branchY[3]));
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+  });
+
+  if (dendro.cut_distance !== undefined && dendro.cut_distance !== null) {
+    const cutY = toY(dendro.cut_distance);
+    if (cutY >= padT && cutY <= padT + plotH) {
+      ctx.beginPath();
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.moveTo(padL, cutY);
+      ctx.lineTo(padL + plotW, cutY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`K=${nClusters} Cut (d ≈ ${dendro.cut_distance})`, padL + plotW - 6, cutY - 6);
+    }
+  }
+
+  if (dendro.ivl && dendro.ivl.length) {
+    const leafXPositions = [];
+    dendro.icoord.forEach((branchX, idx) => {
+      if (dendro.dcoord[idx][0] === 0) leafXPositions.push(branchX[0]);
+      if (dendro.dcoord[idx][3] === 0) leafXPositions.push(branchX[3]);
+    });
+    const sortedLeafX = [...new Set(leafXPositions)].sort((a, b) => a - b);
+
+    ctx.font = '9px sans-serif';
+    ctx.fillStyle = '#334155';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+
+    dendro.ivl.forEach((lbl, i) => {
+      const xVal = sortedLeafX[i] !== undefined ? sortedLeafX[i] : (minX + (i + 0.5) * ((maxX - minX) / dendro.ivl.length));
+      const screenX = toX(xVal);
+      const screenY = padT + plotH + 8;
+
+      ctx.save();
+      ctx.translate(screenX, screenY);
+      ctx.rotate(-Math.PI / 4);
+      ctx.fillText(String(lbl), 0, 0);
+      ctx.restore();
+    });
+  }
+
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(padL, padT, plotW, plotH);
 }
 
 // ─── ACCORDION HELPERS ────────────────────────────────────────
