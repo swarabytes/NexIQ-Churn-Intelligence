@@ -7,6 +7,7 @@ import os
 import json
 from functools import wraps
 import db
+import model_evaluator
 
 app = Flask(__name__)
 # Secret key for secure session management
@@ -15,12 +16,21 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_secret_key_change_in_pr
 # ---------------------------------------------------------
 # Load Model at Startup
 # ---------------------------------------------------------
-try:
-    pipeline = joblib.load('pipeline.pkl')
-    print("Successfully loaded model pipeline (pipeline.pkl)")
-except Exception as e:
-    print(f"Error loading model pipeline: {e}")
-    pipeline = None
+pipeline = None
+
+def reload_production_pipeline():
+    """Dynamically reloads pipeline.pkl into the global pipeline object."""
+    global pipeline
+    try:
+        pipeline = joblib.load('pipeline.pkl')
+        print("Successfully loaded/reloaded model pipeline (pipeline.pkl)")
+        return True
+    except Exception as e:
+        print(f"Error loading model pipeline: {e}")
+        pipeline = None
+        return False
+
+reload_production_pipeline()
 
 try:
     db.init_db()
@@ -371,6 +381,70 @@ def predict():
         print(f"Prediction error: {str(e)}")
         return jsonify({"error": "Failed to process prediction.", "details": str(e)}), 400
 
+# ---------------------------------------------------------
+# Top 3 Machine Learning Model Evaluation & Comparison API
+# ---------------------------------------------------------
+
+@app.route('/api/academic/models-comparison', methods=['GET'])
+def get_academic_models_comparison():
+    """Return top 3 machine learning models comparison data, metrics, curves, and rankings."""
+    try:
+        data = model_evaluator.get_latest_comparison()
+        if not data:
+            data = model_evaluator.train_and_evaluate_all_models()
+        return jsonify(data), 200
+    except Exception as e:
+        return jsonify({"error": "Failed to load model comparison", "details": str(e)}), 500
+
+@app.route('/api/academic/train-models', methods=['POST'])
+def train_academic_models():
+    """Trigger real training and evaluation of Logistic Regression, Random Forest, and XGBoost."""
+    try:
+        payload = request.get_json() or {}
+        criterion = payload.get('criterion', 'f1_score')
+        imbalance_method = payload.get('imbalance_method', 'balanced')
+        
+        results = model_evaluator.train_and_evaluate_all_models(
+            criterion=criterion,
+            imbalance_method=imbalance_method
+        )
+        return jsonify({
+            "success": True,
+            "message": "Models trained and evaluated successfully on physical dataset",
+            "data": results
+        }), 200
+    except Exception as e:
+        return jsonify({"error": "Failed to train models", "details": str(e)}), 500
+
+@app.route('/api/academic/select-production-model', methods=['POST'])
+def select_production_model():
+    """Deploy selected candidate model into production pipeline.pkl and reload in memory."""
+    try:
+        payload = request.get_json() or {}
+        model_key = payload.get('model_key', 'best')
+        reason = payload.get('reason', None)
+        
+        meta = model_evaluator.set_production_model(model_key=model_key, reason=reason)
+        reload_success = reload_production_pipeline()
+        
+        return jsonify({
+            "success": True,
+            "message": f"Successfully deployed {meta['model_name']} as active Production Model",
+            "active_production": meta,
+            "pipeline_reloaded": reload_success
+        }), 200
+    except Exception as e:
+        return jsonify({"error": "Failed to switch production model", "details": str(e)}), 500
+
+@app.route('/api/academic/experiment-history', methods=['GET'])
+def get_experiment_history():
+    """Return history of ML model evaluation experiments."""
+    try:
+        history = model_evaluator.get_experiment_history()
+        return jsonify(history), 200
+    except Exception as e:
+        return jsonify({"error": "Failed to load experiment history", "details": str(e)}), 500
+
 @app.route('/api/academic/classification', methods=['GET'])
 def academic_classification():
     """Return academic classification metrics for comparison."""
@@ -382,6 +456,91 @@ def academic_classification():
         return jsonify(metrics), 200
     else:
         return jsonify({"error": "Metrics not found. Please train academic models first."}), 404
+
+@app.route('/api/model-comparison', methods=['GET'])
+def model_comparison_data():
+    """Return academic classification metrics for model comparison tab."""
+    try:
+        latest = model_evaluator.get_latest_comparison()
+        if latest:
+            return jsonify(latest), 200
+    except Exception:
+        pass
+    metrics_path = os.path.join('models', 'classification_metrics.json')
+    if os.path.exists(metrics_path):
+        import json
+        with open(metrics_path, 'r') as f:
+            metrics = json.load(f)
+        return jsonify(metrics), 200
+    return jsonify({"error": "Classification metrics not found."}), 404
+
+@app.route('/api/compare-predict', methods=['POST'])
+def compare_predict():
+    """Run real-time churn prediction across all trained classification models."""
+    try:
+        import pickle
+        data = request.get_json() or {}
+        feature_keys = [
+            'recency', 'frequency', 'monetary', 'average_order_value',
+            'category_diversity', 'average_review_score', 'payment_count',
+            'delivery_delay', 'inactivity_days'
+        ]
+        features = {k: float(data.get(k, 0.0)) for k in feature_keys}
+        df_input = pd.DataFrame([features])
+
+        models_info = [
+            {'key': 'logistic_regression', 'name': 'Logistic Regression', 'type': 'Linear Probabilistic (Production)'},
+            {'key': 'random_forest',       'name': 'Random Forest',        'type': 'Ensemble (100 Trees)'},
+            {'key': 'xgboost',             'name': 'XGBoost',              'type': 'Gradient Boosted Trees (XGB)'}
+        ]
+
+        scaler_path = os.path.join('models', 'scaler.pkl')
+        scaler = None
+        if os.path.exists(scaler_path):
+            with open(scaler_path, 'rb') as f:
+                scaler = pickle.load(f)
+
+        scaled_vals = scaler.transform(df_input.values) if scaler is not None else df_input.values
+
+        results = []
+        for m_info in models_info:
+            pkl_path = os.path.join('models', f"{m_info['key']}.pkl")
+            if os.path.exists(pkl_path):
+                with open(pkl_path, 'rb') as f:
+                    model = pickle.load(f)
+                pred = int(model.predict(scaled_vals)[0])
+                proba = float(model.predict_proba(scaled_vals)[0][1]) if hasattr(model, 'predict_proba') else (1.0 if pred == 1 else 0.0)
+                
+                if proba < 0.3:
+                    risk_level = "Low"
+                elif proba <= 0.7:
+                    risk_level = "Medium"
+                else:
+                    risk_level = "High"
+
+                results.append({
+                    'model_key': m_info['key'],
+                    'model_name': m_info['name'],
+                    'model_type': m_info['type'],
+                    'prediction': pred,
+                    'probability': round(proba * 100, 2),
+                    'risk_level': risk_level
+                })
+
+        high_risk_count = sum(1 for r in results if r['risk_level'] == 'High')
+        avg_proba = round(sum(r['probability'] for r in results) / len(results), 2) if results else 0.0
+
+        return jsonify({
+            'success': True,
+            'models': results,
+            'average_probability': avg_proba,
+            'consensus': f"{high_risk_count} of {len(results)} Models Flag High Churn Risk",
+            'input_features': features
+        }), 200
+
+    except Exception as e:
+        import traceback
+        return jsonify({'success': False, 'error': str(e), 'traceback': traceback.format_exc()}), 400
 
 # ---------------------------------------------------------
 # Deletion & Reset Routes

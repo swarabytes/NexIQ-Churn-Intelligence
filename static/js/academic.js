@@ -161,8 +161,61 @@ const PARAMS_DEF = {
 
 // ─── INIT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  initAcademicThemeToggle();
   fetchOlapFilters();
+
+  // Listen to theme changes to refresh model comparison charts
+  window.addEventListener('themechange', () => {
+    if (document.getElementById('view-model_comparison')?.classList.contains('active-view')) {
+      if (MC_STATE.data) renderComparisonCharts(MC_STATE.data);
+    }
+  });
+
+  // Check URL hash or initial path
+  const hash = window.location.hash.replace('#', '');
+  const path = window.location.pathname;
+  if (hash === 'model_comparison' || path.endsWith('/model_comparison')) {
+    switchLabTab('model_comparison');
+  }
 });
+
+function initAcademicThemeToggle() {
+  const toggleBtn = document.getElementById('academic-theme-toggle');
+  const root = document.documentElement;
+
+  function updateToggleState(theme) {
+    if (!toggleBtn) return;
+    const iconEl = toggleBtn.querySelector('.theme-toggle-icon');
+    const labelEl = toggleBtn.querySelector('.theme-toggle-label');
+    if (theme === 'dark') {
+      if (iconEl) iconEl.textContent = '🌙';
+      if (labelEl) labelEl.textContent = 'Dark';
+      toggleBtn.setAttribute('title', 'Switch to Light Mode');
+    } else {
+      if (iconEl) iconEl.textContent = '☀️';
+      if (labelEl) labelEl.textContent = 'Light';
+      toggleBtn.setAttribute('title', 'Switch to Dark Mode');
+    }
+  }
+
+  const initialTheme = root.getAttribute('data-theme') || localStorage.getItem('nexiq_theme') || 'light';
+  root.setAttribute('data-theme', initialTheme);
+  updateToggleState(initialTheme);
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const currentTheme = root.getAttribute('data-theme') || 'light';
+      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', nextTheme);
+      try {
+        localStorage.setItem('nexiq_theme', nextTheme);
+      } catch (err) {}
+      updateToggleState(nextTheme);
+      window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: nextTheme } }));
+    });
+  }
+}
 
 async function fetchOlapFilters() {
   try {
@@ -202,12 +255,14 @@ function switchLabTab(view, btn) {
     lab: 'Analysis Laboratory',
     exploration: 'Data Exploration',
     schema: 'Data Warehouse Schemas',
-    methodology: 'Methodology'
+    methodology: 'Methodology',
+    model_comparison: 'Top 3 ML Model Evaluation & Selection'
   };
   updateBreadcrumb(titleMap[view] || view);
 
   if (view === 'exploration') loadExploration(1);
   if (view === 'schema') loadLiveSchema();
+  if (view === 'model_comparison') loadModelComparisonView();
 }
 
 // Backwards compatibility alias for existing callers
@@ -3185,4 +3240,651 @@ function escHtml(str) {
   return String(str)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// MODEL COMPARISON & SELECTION MODULE
+// ═══════════════════════════════════════════════════════════════════
+
+const MC_STATE = {
+  data: null,
+  history: [],
+  charts: {
+    groupedBar: null,
+    roc: null,
+    pr: null
+  },
+  loading: false
+};
+
+async function loadModelComparisonView(force = false) {
+  if (MC_STATE.loading) return;
+  
+  if (!MC_STATE.data || force) {
+    const container = document.getElementById('mc-model-cards-container');
+    if (container && !MC_STATE.data) {
+      container.innerHTML = '<div class="mc-loading-placeholder"><span class="mc-spinner"></span> Loading real model benchmarks...</div>';
+    }
+    
+    try {
+      MC_STATE.loading = true;
+      const [compRes, histRes] = await Promise.all([
+        fetch('/api/academic/models-comparison').then(r => r.json()),
+        fetch('/api/academic/experiment-history').then(r => r.json())
+      ]);
+
+      if (compRes.error) {
+        showToast('Error loading comparison: ' + compRes.error, 'danger');
+        return;
+      }
+
+      MC_STATE.data = compRes;
+      MC_STATE.history = Array.isArray(histRes) ? histRes : [];
+    } catch (err) {
+      console.error('Error fetching model comparison:', err);
+      showToast('Failed to load comparison data: ' + err.message, 'danger');
+      return;
+    } finally {
+      MC_STATE.loading = false;
+    }
+  }
+
+  const data = MC_STATE.data;
+  if (!data) return;
+
+  // Sync dropdown selectors
+  const imbSelect = document.getElementById('mc-imbalance-select');
+  if (imbSelect && data.imbalance_method) imbSelect.value = data.imbalance_method;
+  
+  const critSelect = document.getElementById('mc-criterion-select');
+  if (critSelect && data.selection_criterion) critSelect.value = data.selection_criterion;
+
+  // Render view components
+  renderActiveProductionBanner(data);
+  renderModelCards(data);
+  renderSelectionButtons(data);
+  renderComparisonCharts(data);
+  renderConfusionMatrices(data);
+  renderExperimentHistory(MC_STATE.history);
+}
+
+function renderActiveProductionBanner(data) {
+  const prod = data.active_production_model;
+  const nameEl = document.getElementById('mc-active-model-name');
+  const detailsEl = document.getElementById('mc-active-model-details');
+  if (!prod || !nameEl || !detailsEl) return;
+
+  nameEl.textContent = `${prod.model_name}`;
+  detailsEl.innerHTML = `Active in <code>pipeline.pkl</code> &middot; Deployed at <strong>${prod.updated_at || 'Startup'}</strong> &middot; ${escHtml(prod.selection_reason || 'Verified Production Classifier')} &middot; Powers <code>/predict</code> &amp; <code>/bulk-upload</code>`;
+}
+
+function renderModelCards(data) {
+  const container = document.getElementById('mc-model-cards-container');
+  if (!container || !data.models) return;
+
+  const activeKey = data.active_production_model ? data.active_production_model.model_key : null;
+  const bestKey = data.best_model ? data.best_model.key : null;
+
+  let html = '';
+  data.models.forEach(model => {
+    const isBest = model.key === bestKey;
+    const isProd = model.key === activeKey;
+    const m = model.metrics;
+
+    html += `
+      <div class="mc-card ${isBest ? 'mc-card-winner' : ''} ${isProd ? 'mc-card-active-prod' : ''}">
+        <div class="mc-card-header">
+          <div class="mc-card-title-wrap">
+            <h4 class="mc-card-title">${escHtml(model.name)}</h4>
+            <div class="mc-card-family">${escHtml(model.family)}</div>
+          </div>
+          <div class="mc-card-badges">
+            ${isBest ? '<span class="mc-badge-best">👑 BEST PERFORMING</span>' : ''}
+            ${isProd ? '<span class="mc-badge-prod">🟢 IN PRODUCTION</span>' : ''}
+            <span class="mc-badge-rank">Rank #${model.rank}</span>
+          </div>
+        </div>
+
+        <p class="mc-card-desc">${escHtml(model.desc)}</p>
+
+        <div class="mc-metric-grid">
+          <div class="mc-metric-box mc-metric-primary">
+            <div class="mc-metric-label">F1-Score</div>
+            <div class="mc-metric-val">${(m.f1_score).toFixed(4)}</div>
+            <div class="mc-metric-sub">Harmonic Precision-Recall</div>
+          </div>
+          <div class="mc-metric-box mc-metric-highlight">
+            <div class="mc-metric-label">Recall (Sensitivity)</div>
+            <div class="mc-metric-val">${(m.recall * 100).toFixed(1)}%</div>
+            <div class="mc-metric-sub">Churn Catch Rate</div>
+          </div>
+          <div class="mc-metric-box">
+            <div class="mc-metric-label">Precision</div>
+            <div class="mc-metric-val">${(m.precision * 100).toFixed(1)}%</div>
+            <div class="mc-metric-sub">Reliability</div>
+          </div>
+          <div class="mc-metric-box">
+            <div class="mc-metric-label">ROC-AUC</div>
+            <div class="mc-metric-val">${(m.roc_auc).toFixed(4)}</div>
+            <div class="mc-metric-sub">Separation</div>
+          </div>
+          <div class="mc-metric-box">
+            <div class="mc-metric-label">PR-AUC</div>
+            <div class="mc-metric-val">${(m.pr_auc).toFixed(4)}</div>
+            <div class="mc-metric-sub">Average Precision</div>
+          </div>
+          <div class="mc-metric-box">
+            <div class="mc-metric-label">Specificity</div>
+            <div class="mc-metric-val">${(m.specificity * 100).toFixed(1)}%</div>
+            <div class="mc-metric-sub">True Negative Rate</div>
+          </div>
+          <div class="mc-metric-box">
+            <div class="mc-metric-label">Accuracy</div>
+            <div class="mc-metric-val">${(m.accuracy * 100).toFixed(1)}%</div>
+            <div class="mc-metric-sub">200 Test Holdout</div>
+          </div>
+          <div class="mc-metric-box">
+            <div class="mc-metric-label">Inference Time</div>
+            <div class="mc-metric-val">${(m.pred_time_ms).toFixed(2)} ms</div>
+            <div class="mc-metric-sub">Train: ${(m.train_time_s * 1000).toFixed(1)} ms</div>
+          </div>
+        </div>
+
+        <div class="mc-card-actions">
+          ${isProd 
+            ? '<button class="mc-btn-card-active" disabled>✓ Active in Production</button>' 
+            : `<button class="mc-btn-card-deploy" onclick="selectModelForProduction('${model.key}')">Deploy to Production &rarr;</button>`}
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function renderSelectionButtons(data) {
+  const container = document.getElementById('mc-selection-buttons-container');
+  if (!container || !data.models) return;
+
+  const activeKey = data.active_production_model ? data.active_production_model.model_key : null;
+
+  let html = '';
+  data.models.forEach(model => {
+    const isProd = model.key === activeKey;
+    html += `
+      <div class="mc-selection-item ${isProd ? 'mc-sel-active' : ''}">
+        <div class="mc-sel-info">
+          <div class="mc-sel-name">${escHtml(model.name)}</div>
+          <div class="mc-sel-stats">
+            F1: <strong>${model.metrics.f1_score.toFixed(3)}</strong> &middot; 
+            Recall: <strong>${(model.metrics.recall * 100).toFixed(1)}%</strong> &middot; 
+            AUC: <strong>${model.metrics.roc_auc.toFixed(3)}</strong>
+          </div>
+        </div>
+        <div>
+          ${isProd 
+            ? '<span class="mc-tag-deployed">Active Deployed</span>' 
+            : `<button class="mc-btn-select-deploy" onclick="selectModelForProduction('${model.key}')">Select &amp; Deploy</button>`}
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function renderComparisonCharts(data) {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const textColor = isDark ? '#cbd5e1' : '#475569';
+  const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+
+  // Destroy previous charts
+  Object.keys(MC_STATE.charts).forEach(key => {
+    if (MC_STATE.charts[key]) {
+      MC_STATE.charts[key].destroy();
+      MC_STATE.charts[key] = null;
+    }
+  });
+
+  // Model Colors Palette
+  const modelColors = {
+    logistic_regression: {
+      fill: 'rgba(59, 130, 246, 0.82)',
+      stroke: '#2563eb',
+      line: '#3b82f6'
+    },
+    random_forest: {
+      fill: 'rgba(16, 185, 129, 0.82)',
+      stroke: '#059669',
+      line: '#10b981'
+    },
+    xgboost: {
+      fill: 'rgba(245, 158, 11, 0.82)',
+      stroke: '#d97706',
+      line: '#f59e0b'
+    }
+  };
+
+  // 1. Grouped Bar Chart
+  const barCanvas = document.getElementById('mc-grouped-bar-chart');
+  if (barCanvas && data.models) {
+    const metricsKeys = ['accuracy', 'precision', 'recall', 'f1_score', 'specificity', 'roc_auc', 'pr_auc'];
+    const metricLabels = ['Accuracy', 'Precision', 'Recall', 'F1-Score', 'Specificity', 'ROC-AUC', 'PR-AUC'];
+
+    const datasets = data.models.map(model => {
+      const colors = modelColors[model.key] || { fill: '#6366f1', stroke: '#4f46e5' };
+      return {
+        label: `${model.name} (Rank #${model.rank})`,
+        data: metricsKeys.map(k => model.metrics[k]),
+        backgroundColor: colors.fill,
+        borderColor: colors.stroke,
+        borderWidth: 1.5,
+        borderRadius: 4
+      };
+    });
+
+    MC_STATE.charts.groupedBar = new Chart(barCanvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: metricLabels,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: { color: textColor, font: { family: 'Inter', weight: 500 } }
+          },
+          tooltip: {
+            callbacks: {
+              label: (context) => `${context.dataset.label}: ${(context.raw * 100).toFixed(1)}% (${context.raw.toFixed(4)})`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: gridColor },
+            ticks: { color: textColor, font: { weight: 600 } }
+          },
+          y: {
+            min: 0.0,
+            max: 1.05,
+            grid: { color: gridColor },
+            ticks: {
+              color: textColor,
+              callback: (v) => `${(v * 100).toFixed(0)}%`
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // 2. ROC Curves Chart
+  const rocCanvas = document.getElementById('mc-roc-curve-chart');
+  if (rocCanvas && data.models) {
+    const datasets = [
+      {
+        label: 'Random Chance (AUC: 0.500)',
+        data: [{ x: 0, y: 0 }, { x: 1, y: 1 }],
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.35)' : 'rgba(0, 0, 0, 0.25)',
+        borderDash: [5, 5],
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: false
+      }
+    ];
+
+    data.models.forEach(model => {
+      const colors = modelColors[model.key] || { line: '#6366f1' };
+      const points = (model.metrics.roc_curve || []).map(pt => ({ x: pt.fpr, y: pt.tpr }));
+      datasets.push({
+        label: `${model.name} (AUC: ${model.metrics.roc_auc.toFixed(4)})`,
+        data: points,
+        borderColor: colors.line,
+        borderWidth: 2.5,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.1
+      });
+    });
+
+    MC_STATE.charts.roc = new Chart(rocCanvas.getContext('2d'), {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'nearest', intersect: false },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: { color: textColor, font: { family: 'Inter', size: 11 } }
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label} — FPR: ${ctx.parsed.x.toFixed(3)}, TPR: ${ctx.parsed.y.toFixed(3)}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            min: 0,
+            max: 1,
+            title: { display: true, text: 'False Positive Rate (1 - Specificity)', color: textColor },
+            grid: { color: gridColor },
+            ticks: { color: textColor }
+          },
+          y: {
+            type: 'linear',
+            min: 0,
+            max: 1.05,
+            title: { display: true, text: 'True Positive Rate (Sensitivity / Recall)', color: textColor },
+            grid: { color: gridColor },
+            ticks: { color: textColor }
+          }
+        }
+      }
+    });
+  }
+
+  // 3. Precision-Recall Curves Chart
+  const prCanvas = document.getElementById('mc-pr-curve-chart');
+  if (prCanvas && data.models) {
+    const churnPrevalence = data.class_distribution ? (data.class_distribution.churn_ratio / 100) : 0.26;
+    const datasets = [
+      {
+        label: `Prevalence Baseline (${(churnPrevalence * 100).toFixed(1)}%)`,
+        data: [{ x: 0, y: churnPrevalence }, { x: 1, y: churnPrevalence }],
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.35)' : 'rgba(0, 0, 0, 0.25)',
+        borderDash: [5, 5],
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: false
+      }
+    ];
+
+    data.models.forEach(model => {
+      const colors = modelColors[model.key] || { line: '#6366f1' };
+      const points = (model.metrics.pr_curve || []).map(pt => ({ x: pt.recall, y: pt.precision }));
+      datasets.push({
+        label: `${model.name} (PR-AUC: ${model.metrics.pr_auc.toFixed(4)})`,
+        data: points,
+        borderColor: colors.line,
+        borderWidth: 2.5,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.1
+      });
+    });
+
+    MC_STATE.charts.pr = new Chart(prCanvas.getContext('2d'), {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'nearest', intersect: false },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: { color: textColor, font: { family: 'Inter', size: 11 } }
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label} — Recall: ${ctx.parsed.x.toFixed(3)}, Precision: ${ctx.parsed.y.toFixed(3)}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            min: 0,
+            max: 1,
+            title: { display: true, text: 'Recall (Sensitivity)', color: textColor },
+            grid: { color: gridColor },
+            ticks: { color: textColor }
+          },
+          y: {
+            type: 'linear',
+            min: 0,
+            max: 1.05,
+            title: { display: true, text: 'Precision (Positive Predictive Value)', color: textColor },
+            grid: { color: gridColor },
+            ticks: { color: textColor }
+          }
+        }
+      }
+    });
+  }
+}
+
+function renderConfusionMatrices(data) {
+  const container = document.getElementById('mc-confusion-matrices-container');
+  if (!container || !data.models) return;
+
+  const total = data.dataset_shape ? data.dataset_shape.test_samples : 200;
+  let html = '';
+
+  data.models.forEach(model => {
+    const cm = model.metrics.confusion_matrix || { TN: 0, FP: 0, FN: 0, TP: 0 };
+    html += `
+      <div class="mc-cm-card">
+        <div class="mc-cm-header">
+          <div class="mc-cm-title">${escHtml(model.name)}</div>
+          <span class="mc-badge-rank">Rank #${model.rank}</span>
+        </div>
+        <div class="mc-cm-table-wrap">
+          <table class="mc-cm-table">
+            <thead>
+              <tr>
+                <th class="mc-cm-empty"></th>
+                <th>Pred: Non-Churn (0)</th>
+                <th>Pred: Churn (1)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th class="mc-cm-row-label">Actual: 0</th>
+                <td class="mc-cm-cell mc-cm-tn">
+                  <div class="mc-cm-val">${cm.TN}</div>
+                  <div class="mc-cm-sub">${(cm.TN / total * 100).toFixed(1)}% &middot; True Neg</div>
+                </td>
+                <td class="mc-cm-cell mc-cm-fp">
+                  <div class="mc-cm-val">${cm.FP}</div>
+                  <div class="mc-cm-sub">${(cm.FP / total * 100).toFixed(1)}% &middot; False Pos</div>
+                </td>
+              </tr>
+              <tr>
+                <th class="mc-cm-row-label">Actual: 1</th>
+                <td class="mc-cm-cell mc-cm-fn">
+                  <div class="mc-cm-val">${cm.FN}</div>
+                  <div class="mc-cm-sub">${(cm.FN / total * 100).toFixed(1)}% &middot; False Neg</div>
+                </td>
+                <td class="mc-cm-cell mc-cm-tp">
+                  <div class="mc-cm-val">${cm.TP}</div>
+                  <div class="mc-cm-sub">${(cm.TP / total * 100).toFixed(1)}% &middot; True Pos</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="mc-cm-footer">
+          <div>Recall: <strong>${(model.metrics.recall * 100).toFixed(1)}%</strong></div>
+          <div>Specificity: <strong>${(model.metrics.specificity * 100).toFixed(1)}%</strong></div>
+          <div>Precision: <strong>${(model.metrics.precision * 100).toFixed(1)}%</strong></div>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function renderExperimentHistory(history) {
+  const tbody = document.getElementById('mc-history-tbody');
+  if (!tbody) return;
+
+  if (!history || history.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:1.5rem; color:var(--text-muted);">No training experiments recorded yet.</td></tr>`;
+    return;
+  }
+
+  let html = '';
+  history.forEach(run => {
+    const summaryStr = (run.models_summary || []).map(m => `${m.name}: F1=${m.f1.toFixed(3)}`).join(', ');
+    html += `
+      <tr>
+        <td>
+          <div style="font-weight:600; font-family:var(--font-mono); font-size:0.8rem;">${escHtml(run.run_id)}</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">${escHtml(run.timestamp)}</div>
+        </td>
+        <td><span class="mc-badge-subtle">${escHtml(run.imbalance_method || 'balanced')}</span></td>
+        <td><span class="mc-badge-subtle">${escHtml(run.criterion || 'f1_score')}</span></td>
+        <td><strong>${escHtml(run.best_model)}</strong></td>
+        <td><span style="font-weight:600; color:var(--success);">${run.best_f1 ? run.best_f1.toFixed(4) : '-'}</span></td>
+        <td>${run.best_recall ? (run.best_recall * 100).toFixed(1) + '%' : '-'}</td>
+        <td>${run.best_accuracy ? (run.best_accuracy * 100).toFixed(1) + '%' : '-'}</td>
+        <td style="font-size:0.75rem; color:var(--text-muted);">${escHtml(summaryStr)}</td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = html;
+}
+
+async function onModelComparisonParamChange() {
+  // Trigger training when parameters change
+  triggerTrainAndCompare();
+}
+
+async function triggerTrainAndCompare() {
+  const btn = document.getElementById('btn-retrain-models');
+  const spinner = document.getElementById('mc-train-spinner');
+  const imbSelect = document.getElementById('mc-imbalance-select');
+  const critSelect = document.getElementById('mc-criterion-select');
+
+  const imbalance = imbSelect ? imbSelect.value : 'balanced';
+  const criterion = critSelect ? critSelect.value : 'f1_score';
+
+  try {
+    if (btn) btn.disabled = true;
+    if (spinner) spinner.classList.remove('hidden');
+
+    showToast(`Evaluating Logistic Regression, Random Forest & XGBoost (${imbalance}, ${criterion})...`, 'info');
+
+    const resp = await fetch('/api/academic/train-models', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        imbalance_method: imbalance,
+        criterion: criterion
+      })
+    });
+
+    const result = await resp.json();
+    if (result.success && result.data) {
+      MC_STATE.data = result.data;
+      
+      // Also fetch updated history
+      const histRes = await fetch('/api/academic/experiment-history').then(r => r.json());
+      MC_STATE.history = Array.isArray(histRes) ? histRes : [];
+
+      renderActiveProductionBanner(MC_STATE.data);
+      renderModelCards(MC_STATE.data);
+      renderSelectionButtons(MC_STATE.data);
+      renderComparisonCharts(MC_STATE.data);
+      renderConfusionMatrices(MC_STATE.data);
+      renderExperimentHistory(MC_STATE.history);
+
+      showToast(`Benchmark complete! Winner: ${result.data.best_model.name} (Rank #1)`, 'success');
+    } else {
+      showToast('Training failed: ' + (result.error || 'Unknown error'), 'danger');
+    }
+  } catch (err) {
+    console.error('Training error:', err);
+    showToast('Failed to execute training benchmark: ' + err.message, 'danger');
+  } finally {
+    if (btn) btn.disabled = false;
+    if (spinner) spinner.classList.add('hidden');
+  }
+}
+
+async function selectModelForProduction(modelKey) {
+  const modelNames = {
+    'logistic_regression': 'Logistic Regression',
+    'random_forest': 'Random Forest',
+    'xgboost': 'XGBoost',
+    'auto': 'the Best Ranked Model'
+  };
+
+  const displayName = modelNames[modelKey] || modelKey;
+  if (!confirm(`Are you sure you want to deploy ${displayName} as the live Production Model?
+
+This will update pipeline.pkl and immediately power all single and bulk customer predictions.`)) {
+    return;
+  }
+
+  try {
+    showToast(`Deploying ${displayName} to production...`, 'info');
+
+    const resp = await fetch('/api/academic/select-production-model', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model_key: modelKey,
+        reason: `Explicitly deployed via Model Selection Hub`
+      })
+    });
+
+    const result = await resp.json();
+    if (result.success) {
+      showToast(result.message || `Production Model successfully updated!`, 'success');
+      // Refresh comparison view
+      await loadModelComparisonView(true);
+    } else {
+      showToast('Model deployment failed: ' + (result.error || 'Unknown error'), 'danger');
+    }
+  } catch (err) {
+    console.error('Deployment error:', err);
+    showToast('Deployment request failed: ' + err.message, 'danger');
+  }
+}
+
+// ─── TOAST NOTIFICATION UTILITY ─────────────────────────────────
+function showToast(message, type = 'info') {
+  let toastContainer = document.getElementById('mc-toast-container');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'mc-toast-container';
+    toastContainer.className = 'mc-toast-container';
+    document.body.appendChild(toastContainer);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = `mc-toast mc-toast-${type}`;
+
+  const iconMap = {
+    info: 'ℹ️',
+    success: '✅',
+    danger: '❌',
+    warning: '⚠️'
+  };
+
+  toast.innerHTML = `
+    <span class="mc-toast-icon">${iconMap[type] || 'ℹ️'}</span>
+    <span class="mc-toast-msg">${escHtml(message)}</span>
+    <button class="mc-toast-close" onclick="this.parentElement.remove()">&times;</button>
+  `;
+
+  toastContainer.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('mc-toast-fade');
+    setTimeout(() => toast.remove(), 400);
+  }, 4000);
 }

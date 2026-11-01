@@ -4,6 +4,48 @@ document.addEventListener('DOMContentLoaded', () => {
     // GLOBAL UI UTILITIES
     // ============================================================
 
+    // ---- Light & Dark Theme Toggle ----
+    function initThemeToggle() {
+        const toggleBtn = document.getElementById('theme-toggle');
+        const root = document.documentElement;
+
+        function updateToggleState(theme) {
+            if (!toggleBtn) return;
+            const iconEl = toggleBtn.querySelector('.theme-toggle-icon');
+            const labelEl = toggleBtn.querySelector('.theme-toggle-label');
+            if (theme === 'light') {
+                if (iconEl) iconEl.textContent = '☀️';
+                if (labelEl) labelEl.textContent = 'Light';
+                toggleBtn.setAttribute('title', 'Switch to Dark Mode');
+                toggleBtn.setAttribute('aria-label', 'Current theme is Light. Click to switch to Dark Mode.');
+            } else {
+                if (iconEl) iconEl.textContent = '🌙';
+                if (labelEl) labelEl.textContent = 'Dark';
+                toggleBtn.setAttribute('title', 'Switch to Light Mode');
+                toggleBtn.setAttribute('aria-label', 'Current theme is Dark. Click to switch to Light Mode.');
+            }
+        }
+
+        const initialTheme = root.getAttribute('data-theme') || localStorage.getItem('nexiq_theme') || 'dark';
+        root.setAttribute('data-theme', initialTheme);
+        updateToggleState(initialTheme);
+
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const currentTheme = root.getAttribute('data-theme') || 'dark';
+                const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+                root.setAttribute('data-theme', nextTheme);
+                try {
+                    localStorage.setItem('nexiq_theme', nextTheme);
+                } catch (err) {}
+                updateToggleState(nextTheme);
+                window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: nextTheme } }));
+            });
+        }
+    }
+    initThemeToggle();
+
     // ---- Toast Notification System ----
     let toastContainer = document.querySelector('.toast-container');
     if (!toastContainer) {
@@ -76,6 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const predictForm = document.getElementById('predict-form');
     if (predictForm) {
         setupPredictPage();
+        setupChurnTabsAndComparison();
     }
 
     function setupPredictPage() {
@@ -208,6 +251,329 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+
+
+    // ============================================================
+    // CUSTOMER CHURN — TABS & MODEL COMPARISON
+    // ============================================================
+    function setupChurnTabsAndComparison() {
+        const tabBtns = document.querySelectorAll('.churn-tab-btn');
+        if (!tabBtns.length) return;
+
+        let comparisonDataLoaded = false;
+        let metricsChartInstance = null;
+        let featureChartInstance = null;
+
+        function switchChurnTab(targetTabId) {
+            tabBtns.forEach(btn => {
+                const isActive = btn.getAttribute('data-tab') === targetTabId;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+
+            document.querySelectorAll('.churn-tab-pane').forEach(pane => {
+                pane.style.display = (pane.id === targetTabId) ? 'block' : 'none';
+            });
+
+            if (targetTabId === 'tab-model-comparison' && !comparisonDataLoaded) {
+                loadModelComparisonData();
+            }
+        }
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetTabId = btn.getAttribute('data-tab');
+                switchChurnTab(targetTabId);
+            });
+        });
+
+        // Jump button from Single Result to Model Comparison
+        const btnJump = document.getElementById('btn-jump-to-compare');
+        if (btnJump) {
+            btnJump.addEventListener('click', () => {
+                switchChurnTab('tab-model-comparison');
+                document.getElementById('tab-model-comparison').scrollIntoView({ behavior: 'smooth' });
+                runLiveComparison();
+            });
+        }
+
+        // Live simulator buttons
+        const btnSync = document.getElementById('btn-sync-prediction-data');
+        if (btnSync) {
+            btnSync.addEventListener('click', () => {
+                showToast('Synchronized form parameters!', 'success', 2000);
+                runLiveComparison();
+            });
+        }
+
+        const btnAtRisk = document.getElementById('btn-sample-at-risk');
+        if (btnAtRisk) {
+            btnAtRisk.addEventListener('click', () => {
+                const atRiskSample = {
+                    recency: 110,
+                    frequency: 1,
+                    monetary: 75,
+                    average_order_value: 75,
+                    category_diversity: 1,
+                    average_review_score: 1.5,
+                    payment_count: 1,
+                    delivery_delay: 8,
+                    inactivity_days: 120
+                };
+                for (const k in atRiskSample) {
+                    const el = document.getElementById(k);
+                    if (el) el.value = atRiskSample[k];
+                }
+                showToast('Loaded dormant at-risk profile!', 'warning', 2500);
+                runLiveComparison(atRiskSample);
+            });
+        }
+
+        const btnRunAll = document.getElementById('btn-run-all-models');
+        if (btnRunAll) {
+            btnRunAll.addEventListener('click', () => {
+                runLiveComparison();
+            });
+        }
+
+        // Fetch and load benchmark data
+        async function loadModelComparisonData() {
+            try {
+                const res = await fetch('/api/academic/classification');
+                const data = await res.json();
+                if (!Array.isArray(data)) throw new Error('Invalid format');
+                renderComparisonTable(data);
+                renderComparisonCharts(data);
+                comparisonDataLoaded = true;
+            } catch (err) {
+                console.warn('Could not load comparison data', err);
+            }
+        }
+
+        function renderComparisonTable(models) {
+            const tbody = document.getElementById('model-comparison-table-body');
+            if (!tbody) return;
+
+            const roles = {
+                'Logistic Regression': { role: '👑 Production Champion', badge: 'low' },
+                'Random Forest':       { role: 'Ensemble Benchmark',    badge: 'medium' },
+                'XGBoost':             { role: 'Gradient Boosting Benchmark', badge: 'high' }
+            };
+
+            const modelIcons = {
+                'Logistic Regression': '📈',
+                'Random Forest':       '🌲',
+                'XGBoost':             '⚡'
+            };
+
+            tbody.innerHTML = models.map(m => {
+                const name = m.model || 'Unknown';
+                const icon = modelIcons[name] || '📊';
+                const acc = (m.accuracy * 100).toFixed(1) + '%';
+                const prec = (m.precision * 100).toFixed(1) + '%';
+                const rec = (m.recall * 100).toFixed(1) + '%';
+                const f1 = m.f1_score ? m.f1_score.toFixed(3) : 'N/A';
+                const spec = m.specificity ? (m.specificity * 100).toFixed(1) + '%' : 'N/A';
+                const roc = m.roc_auc ? m.roc_auc.toFixed(3) : 'N/A';
+                const cm = m.confusion_matrix || {};
+                const roleInfo = roles[name] || { role: 'Evaluated Model', badge: 'low' };
+
+                return `
+                    <tr>
+                        <td style="white-space: nowrap;">
+                            <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                <span style="font-size: 1.15rem; line-height: 1;">${icon}</span>
+                                <strong style="font-size: 0.92rem; color: var(--text-primary);">${name}</strong>
+                            </div>
+                        </td>
+                        <td style="color: var(--success); font-weight: 700; text-align: center; white-space: nowrap; font-family: var(--font-mono);">${acc}</td>
+                        <td style="text-align: center; white-space: nowrap; font-family: var(--font-mono);">${prec}</td>
+                        <td style="text-align: center; white-space: nowrap; font-family: var(--font-mono);">${rec}</td>
+                        <td style="color: #60a5fa; font-weight: 700; text-align: center; white-space: nowrap; font-family: var(--font-mono);">${f1}</td>
+                        <td style="text-align: center; white-space: nowrap; font-family: var(--font-mono);">${spec}</td>
+                        <td style="color: #a78bfa; font-weight: 700; text-align: center; white-space: nowrap; font-family: var(--font-mono);">${roc}</td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            <div class="cm-table-inline">
+                                <span class="cm-tag cm-tag-tn" title="True Negatives (Retained)">TN: ${cm.TN ?? 0}</span>
+                                <span class="cm-tag cm-tag-fp" title="False Positives (Type I Error)">FP: ${cm.FP ?? 0}</span>
+                                <span class="cm-tag cm-tag-fn" title="False Negatives (Missed Churn)">FN: ${cm.FN ?? 0}</span>
+                                <span class="cm-tag cm-tag-tp" title="True Positives (Caught Churn)">TP: ${cm.TP ?? 0}</span>
+                            </div>
+                        </td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            <span class="matrix-status-pill ${roleInfo.badge}">${roleInfo.role}</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderComparisonCharts(models) {
+            const ctxBar = document.getElementById('modelMetricsBarChart');
+            if (ctxBar) {
+                if (metricsChartInstance) metricsChartInstance.destroy();
+                const labels = models.map(m => m.model);
+                metricsChartInstance = new Chart(ctxBar, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Accuracy (%)',
+                                data: models.map(m => (m.accuracy * 100).toFixed(1)),
+                                backgroundColor: 'rgba(59, 130, 246, 0.85)'
+                            },
+                            {
+                                label: 'Precision (%)',
+                                data: models.map(m => (m.precision * 100).toFixed(1)),
+                                backgroundColor: 'rgba(16, 185, 129, 0.85)'
+                            },
+                            {
+                                label: 'Recall (%)',
+                                data: models.map(m => (m.recall * 100).toFixed(1)),
+                                backgroundColor: 'rgba(245, 158, 11, 0.85)'
+                            },
+                            {
+                                label: 'F1-Score (×100)',
+                                data: models.map(m => (m.f1_score * 100).toFixed(1)),
+                                backgroundColor: 'rgba(168, 85, 247, 0.85)'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: { callback: v => v + '%' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            const ctxFeat = document.getElementById('featureImportanceCompareChart');
+            if (ctxFeat) {
+                if (featureChartInstance) featureChartInstance.destroy();
+
+                const rfModel  = models.find(m => m.model === 'Random Forest') || {};
+                const xgbModel = models.find(m => m.model === 'XGBoost') || {};
+                const fi = rfModel.feature_importance || xgbModel.feature_importance || {};
+                const featLabels = Object.keys(fi).map(k => k.replace(/_/g, ' '));
+                const rfValues  = Object.values(rfModel.feature_importance || {}).map(v => (v * 100).toFixed(1));
+                const xgbValues = Object.values(xgbModel.feature_importance || {}).map(v => (v * 100).toFixed(1));
+
+                featureChartInstance = new Chart(ctxFeat, {
+                    type: 'bar',
+                    data: {
+                        labels: featLabels.length ? featLabels : ['inactivity days', 'recency', 'monetary', 'average review score', 'frequency', 'delivery delay'],
+                        datasets: [
+                            {
+                                label: 'Random Forest Importance (%)',
+                                data: rfValues.length ? rfValues : [43.4, 23.7, 11.2, 6.2, 3.5, 2.8],
+                                backgroundColor: 'rgba(168, 85, 247, 0.85)'
+                            },
+                            {
+                                label: 'XGBoost Importance (%)',
+                                data: xgbValues.length ? xgbValues : [38.2, 25.1, 14.8, 8.3, 7.6, 6.0],
+                                backgroundColor: 'rgba(16, 185, 129, 0.85)'
+                            }
+                        ]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                ticks: { callback: v => v + '%' }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        async function runLiveComparison(customPayload = null) {
+            let payload = customPayload;
+            if (!payload) {
+                payload = {};
+                const form = document.getElementById('predict-form');
+                if (form) {
+                    const fd = new FormData(form);
+                    fd.forEach((v, k) => { payload[k] = parseFloat(v) || 0; });
+                }
+            }
+
+            if (!payload.recency && !payload.monetary) {
+                payload = { ...SAMPLE_DATA };
+            }
+
+            const grid = document.getElementById('live-models-output-grid');
+            if (!grid) return;
+            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-secondary);">Calculating live inference across all models...</div>';
+
+            try {
+                const res = await fetch('/api/compare-predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+
+                const banner = document.getElementById('compare-consensus-banner');
+                if (banner) {
+                    banner.style.display = 'flex';
+                    document.getElementById('consensus-heading').textContent = 'Model Agreement Consensus';
+                    document.getElementById('consensus-sub').textContent = data.consensus;
+                    document.getElementById('consensus-percentage').textContent = data.average_probability + '%';
+                }
+
+                const icons = {
+                    'logistic_regression': '📈',
+                    'random_forest':       '🌲',
+                    'xgboost':             '⚡'
+                };
+
+                grid.innerHTML = data.models.map(m => {
+                    const riskCls = m.risk_level.toLowerCase() + '-risk';
+                    const icon = icons[m.model_key] || '📊';
+                    return `
+                        <div class="live-model-result-card ${riskCls}">
+                            <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">${icon}</div>
+                            <div class="live-model-name">${m.model_name}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">${m.model_type}</div>
+                            
+                            <div class="live-model-prob ${riskCls}">${m.probability}%</div>
+                            
+                            <div style="margin: 0.5rem 0;">
+                                <span class="badge ${m.risk_level.toLowerCase()}">${m.risk_level} Churn Risk</span>
+                            </div>
+                            
+                            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                Prediction: <strong style="color: var(--text-primary);">${m.prediction === 1 ? 'High Risk' : 'Retained'}</strong>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                grid.innerHTML = `<div style="grid-column: 1 / -1; color: var(--danger); text-align: center; padding: 1rem;">Simulation error: ${err.message}</div>`;
+            }
+        }
+    }
+
+
     function showResult(result) {
         const section = document.getElementById('result-section');
         section.style.display = 'block';
@@ -262,6 +628,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let filteredData = [];
     let currentPage = 1;
     const PAGE_SIZE = 10;
+
+    let chartState = {
+        distMetric: 'count',
+        spendView: 'total',
+        trendMetric: 'probability',
+        trendRange: '20',
+        activeRiskFilter: null
+    };
 
     async function setupDashboardPage() {
         try {
@@ -358,6 +732,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const query = (document.getElementById('searchInput')?.value || '').toLowerCase();
         const risk = (document.getElementById('filterRisk')?.value || '');
         const priority = (document.getElementById('filterPriority')?.value || '');
+
+        chartState.activeRiskFilter = risk || null;
+        if (typeof updateChartFilterUI === 'function') {
+            updateChartFilterUI();
+        }
 
         filteredData = allPredictions.filter(p => {
             const matchSearch = !query || p.customer_id.toLowerCase().includes(query);
@@ -565,85 +944,772 @@ document.addEventListener('DOMContentLoaded', () => {
         window.requestAnimationFrame(step);
     }
 
-    // ---- Build Charts ----
+    // ============================================================
+    // HIGHLY VISUALIZED & INTERACTIVE CHARTS ENGINE
+    // ============================================================
+
+
+    let chartInstances = {
+        dist: null,
+        spend: null,
+        trend: null
+    };
+
+    let currentTrendPredictions = [];
+
+    // Filter Priority Queue table when a chart segment is clicked
+    function filterTableByRisk(riskTier) {
+        const filterEl = document.getElementById('filterRisk');
+        if (!filterEl) return;
+
+        if (chartState.activeRiskFilter === riskTier) {
+            chartState.activeRiskFilter = null;
+            filterEl.value = '';
+        } else {
+            chartState.activeRiskFilter = riskTier;
+            filterEl.value = riskTier;
+        }
+
+        currentPage = 1;
+        applyFilters();
+        updateChartFilterUI();
+
+        const tableEl = document.getElementById('customer-table');
+        if (tableEl) {
+            tableEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        showToast(
+            chartState.activeRiskFilter 
+                ? `Filtered priority queue to ${chartState.activeRiskFilter} Risk customers.` 
+                : 'Showing all customer risk levels.',
+            'success',
+            2200
+        );
+    }
+
+    function updateChartFilterUI() {
+        const resetBtn = document.getElementById('resetDistFilter');
+        if (resetBtn) {
+            resetBtn.style.display = chartState.activeRiskFilter ? 'inline-block' : 'none';
+            if (chartState.activeRiskFilter) {
+                resetBtn.textContent = `✕ Clear ${chartState.activeRiskFilter} Filter`;
+            }
+        }
+        document.querySelectorAll('.stat-pill').forEach(pill => {
+            const risk = pill.getAttribute('data-risk');
+            if (risk === chartState.activeRiskFilter) {
+                pill.classList.add('active');
+            } else {
+                pill.classList.remove('active');
+            }
+        });
+    }
+
+    // Chart.js Donut Center Text Plugin
+    const donutCenterPlugin = {
+        id: 'donutCenterHUD',
+        beforeDraw(chart) {
+            if (chart.config.type !== 'doughnut') return;
+            const { ctx, chartArea } = chart;
+            if (!chartArea) return;
+
+            const centerX = (chartArea.left + chartArea.right) / 2;
+            const centerY = (chartArea.top + chartArea.bottom) / 2;
+
+            const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+            const primaryColor = isLight ? '#0f172a' : '#f8fafc';
+            const secondaryColor = isLight ? '#64748b' : '#94a3b8';
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            if (chart.activeHoverInfo) {
+                const h = chart.activeHoverInfo;
+                // Hover title
+                ctx.font = '700 11px Inter, sans-serif';
+                ctx.fillStyle = h.color || primaryColor;
+                ctx.fillText(h.title.toUpperCase(), centerX, centerY - 16);
+
+                // Hover value
+                ctx.font = '800 22px Inter, sans-serif';
+                ctx.fillStyle = primaryColor;
+                ctx.fillText(h.value, centerX, centerY + 6);
+
+                // Hover subtext
+                ctx.font = '600 11px Inter, sans-serif';
+                ctx.fillStyle = secondaryColor;
+                ctx.fillText(h.sub, centerX, centerY + 25);
+            } else {
+                // Default center HUD
+                const total = chart.centerMainText || '0';
+                const sub = chart.centerSubText || 'CUSTOMERS';
+
+                ctx.font = '800 24px Inter, sans-serif';
+                ctx.fillStyle = primaryColor;
+                ctx.fillText(total, centerX, centerY - 4);
+
+                ctx.font = '600 10px Inter, sans-serif';
+                ctx.fillStyle = secondaryColor;
+                ctx.fillText(sub, centerX, centerY + 18);
+            }
+            ctx.restore();
+        }
+    };
+
+    // Chart.js Bar Value Labels Plugin
+    const barValueLabelsPlugin = {
+        id: 'barValueLabels',
+        afterDatasetsDraw(chart) {
+            if (chart.config.type !== 'bar') return;
+            const { ctx } = chart;
+            const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+            const labelColor = isLight ? '#0f172a' : '#f8fafc';
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.font = '700 11px Inter, sans-serif';
+            ctx.fillStyle = labelColor;
+
+            chart.data.datasets.forEach((dataset, i) => {
+                const meta = chart.getDatasetMeta(i);
+                meta.data.forEach((bar, index) => {
+                    const rawVal = dataset.data[index];
+                    if (rawVal === undefined || rawVal === null) return;
+                    let displayVal = chartState.spendView === 'avg'
+                        ? `$${Math.round(rawVal).toLocaleString()}/avg`
+                        : `$${Math.round(rawVal).toLocaleString()}`;
+                    if (rawVal === 0) displayVal = '$0';
+                    ctx.fillText(displayVal, bar.x, bar.y - 6);
+                });
+            });
+            ctx.restore();
+        }
+    };
+
+    // Chart.js Trend Reference Line & Threshold Plugin
+    const trendThresholdPlugin = {
+        id: 'trendThresholdAnnotations',
+        beforeDraw(chart) {
+            if (chart.config.type !== 'line') return;
+            if (chartState.trendMetric !== 'probability') return;
+
+            const { ctx, chartArea, scales } = chart;
+            if (!chartArea || !scales.y) return;
+
+            const yScale = scales.y;
+            const y70 = yScale.getPixelForValue(70);
+            const y40 = yScale.getPixelForValue(40);
+
+            ctx.save();
+
+            // Shaded danger zone (> 70%)
+            if (y70 >= chartArea.top && y70 <= chartArea.bottom) {
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.06)';
+                ctx.fillRect(chartArea.left, chartArea.top, chartArea.width, y70 - chartArea.top);
+
+                // 70% Danger Line
+                ctx.beginPath();
+                ctx.setLineDash([5, 4]);
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.55)';
+                ctx.lineWidth = 1.5;
+                ctx.moveTo(chartArea.left, y70);
+                ctx.lineTo(chartArea.right, y70);
+                ctx.stroke();
+
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#ef4444';
+                ctx.font = '600 10px Inter, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText('⚡ 70% HIGH RISK THRESHOLD', chartArea.right - 8, y70 - 4);
+            }
+
+            // 40% Caution Line
+            if (y40 >= chartArea.top && y40 <= chartArea.bottom) {
+                ctx.beginPath();
+                ctx.setLineDash([4, 4]);
+                ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
+                ctx.lineWidth = 1.2;
+                ctx.moveTo(chartArea.left, y40);
+                ctx.lineTo(chartArea.right, y40);
+                ctx.stroke();
+
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#f59e0b';
+                ctx.font = '600 10px Inter, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText('40% CAUTION LINE', chartArea.right - 8, y40 - 4);
+            }
+
+            ctx.restore();
+        }
+    };
+
+    function setupChartInteractivity() {
+        // Doughnut metric pills
+        document.querySelectorAll('#distMetricPills .chart-pill').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('#distMetricPills .chart-pill').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                chartState.distMetric = btn.getAttribute('data-metric');
+                renderRiskDistChart(allPredictions);
+            };
+        });
+
+        // Clear filter button
+        const resetBtn = document.getElementById('resetDistFilter');
+        if (resetBtn) {
+            resetBtn.onclick = () => {
+                chartState.activeRiskFilter = null;
+                const filterEl = document.getElementById('filterRisk');
+                if (filterEl) filterEl.value = '';
+                currentPage = 1;
+                applyFilters();
+                updateChartFilterUI();
+                renderRiskDistChart(allPredictions);
+                renderSpendChurnChart(allPredictions);
+                showToast('Cleared risk tier filter.', 'info', 1800);
+            };
+        }
+
+        // Spend view pills
+        document.querySelectorAll('#spendMetricPills .chart-pill').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('#spendMetricPills .chart-pill').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                chartState.spendView = btn.getAttribute('data-view');
+                renderSpendChurnChart(allPredictions);
+            };
+        });
+
+        // Trend metric pills
+        document.querySelectorAll('#trendMetricPills .chart-pill').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('#trendMetricPills .chart-pill').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                chartState.trendMetric = btn.getAttribute('data-metric');
+                renderActivityTrendChart(allPredictions);
+            };
+        });
+
+        // Trend range pills
+        document.querySelectorAll('#trendRangePills .chart-pill').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('#trendRangePills .chart-pill').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                chartState.trendRange = btn.getAttribute('data-range');
+                renderActivityTrendChart(allPredictions);
+            };
+        });
+    }
+
     function buildCharts(predictions) {
-        Chart.defaults.color = '#94a3b8';
-        Chart.defaults.font.family = "'Inter', sans-serif";
+        setupChartInteractivity();
+        renderRiskDistChart(predictions);
+        renderSpendChurnChart(predictions);
+        renderActivityTrendChart(predictions);
+    }
 
-        // Risk Distribution Doughnut
-        const riskCounts = { Low: 0, Medium: 0, High: 0 };
-        predictions.forEach(p => { if (riskCounts[p.risk_level] !== undefined) riskCounts[p.risk_level]++; });
+    // ─────────────────────────────────────────────────────────────
+    // 1. RISK DISTRIBUTION (DOUGHNUT)
+    // ─────────────────────────────────────────────────────────────
+    function renderRiskDistChart(predictions) {
+        const ctxEl = document.getElementById('riskDistChart');
+        if (!ctxEl) return;
 
-        const ctxDist = document.getElementById('riskDistChart');
-        if (ctxDist) {
-            new Chart(ctxDist, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Low Risk', 'Medium Risk', 'High Risk'],
-                    datasets: [{
-                        data: [riskCounts.Low, riskCounts.Medium, riskCounts.High],
-                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
-                        borderWidth: 0,
-                        hoverOffset: 6
-                    }]
-                },
-                options: {
-                    cutout: '72%',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom' }
+        if (chartInstances.dist) {
+            chartInstances.dist.destroy();
+            chartInstances.dist = null;
+        }
+
+        const counts = { Low: 0, Medium: 0, High: 0 };
+        const spends = { Low: 0, Medium: 0, High: 0 };
+
+        predictions.forEach(p => {
+            if (counts[p.risk_level] !== undefined) {
+                counts[p.risk_level]++;
+                spends[p.risk_level] += (p.monetary || 0);
+            }
+        });
+
+        const totalCount = predictions.length;
+        const totalRevenue = Object.values(spends).reduce((a, b) => a + b, 0);
+
+        const isRevenue = chartState.distMetric === 'revenue';
+        const chartData = isRevenue 
+            ? [spends.Low, spends.Medium, spends.High]
+            : [counts.Low, counts.Medium, counts.High];
+
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        const cardBg = isLight ? '#ffffff' : '#141b2d';
+
+        const chart = new Chart(ctxEl, {
+            type: 'doughnut',
+            data: {
+                labels: ['Low Risk', 'Medium Risk', 'High Risk'],
+                datasets: [{
+                    data: chartData,
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                    hoverBackgroundColor: ['#34d399', '#fbbf24', '#f87171'],
+                    borderColor: cardBg,
+                    borderWidth: 3,
+                    hoverBorderWidth: 4,
+                    hoverOffset: 12,
+                    spacing: 3
+                }]
+            },
+            options: {
+                cutout: '72%',
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: 8 },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: isLight ? '#475569' : '#94a3b8',
+                            font: { family: "'Inter', sans-serif", weight: '600', size: 11 },
+                            padding: 16,
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(11,15,25,0.95)',
+                        titleColor: isLight ? '#0f172a' : '#f8fafc',
+                        bodyColor: isLight ? '#475569' : '#cbd5e1',
+                        borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8,
+                        boxPadding: 6,
+                        callbacks: {
+                            label(context) {
+                                const val = context.parsed;
+                                const tier = context.label.replace(' Risk', '');
+                                const tierCount = counts[tier];
+                                const tierSpend = spends[tier];
+                                const pct = totalCount > 0 ? Math.round((tierCount / totalCount) * 100) : 0;
+                                if (isRevenue) {
+                                    return ` Revenue: $${Math.round(val).toLocaleString()} (${pct}%) • ${tierCount} Customers`;
+                                }
+                                return ` Customers: ${val} (${pct}%) • Revenue: $${Math.round(tierSpend).toLocaleString()}`;
+                            },
+                            afterLabel() {
+                                return '💡 Click slice to filter Priority Queue';
+                            }
+                        }
                     }
+                },
+                onClick(event, elements) {
+                    if (elements && elements.length > 0) {
+                        const idx = elements[0].index;
+                        const riskTiers = ['Low', 'Medium', 'High'];
+                        filterTableByRisk(riskTiers[idx]);
+                    }
+                },
+                onHover(event, elements) {
+                    if (elements && elements.length > 0) {
+                        const idx = elements[0].index;
+                        const riskTiers = ['Low', 'Medium', 'High'];
+                        const colors = ['#10b981', '#f59e0b', '#ef4444'];
+                        const tier = riskTiers[idx];
+                        const tierCount = counts[tier];
+                        const tierSpend = spends[tier];
+                        const pct = totalCount > 0 ? Math.round((tierCount / totalCount) * 100) : 0;
+
+                        chart.activeHoverInfo = {
+                            title: `${tier} Risk`,
+                            color: colors[idx],
+                            value: isRevenue ? `$${Math.round(tierSpend).toLocaleString()}` : `${tierCount} (${pct}%)`,
+                            sub: isRevenue ? `${tierCount} customers` : `$${Math.round(tierSpend).toLocaleString()} spend`
+                        };
+                    } else {
+                        chart.activeHoverInfo = null;
+                    }
+                    chart.draw();
                 }
-            });
-        }
+            },
+            plugins: [donutCenterPlugin]
+        });
 
-        // Spend vs Churn Bar
-        const spendSum = { Low: 0, Medium: 0, High: 0 };
-        predictions.forEach(p => { if (spendSum[p.risk_level] !== undefined) spendSum[p.risk_level] += (p.monetary || 0); });
+        // Set default center HUD metrics
+        chart.centerMainText = isRevenue 
+            ? `$${Math.round(totalRevenue).toLocaleString()}` 
+            : String(totalCount);
+        chart.centerSubText = isRevenue 
+            ? 'TOTAL REVENUE' 
+            : 'CUSTOMERS';
 
-        const ctxSpend = document.getElementById('spendChurnChart');
-        if (ctxSpend) {
-            new Chart(ctxSpend, {
-                type: 'bar',
-                data: {
-                    labels: ['Low Risk', 'Medium Risk', 'High Risk'],
-                    datasets: [{
-                        label: 'Total Monetary ($)',
-                        data: [spendSum.Low, spendSum.Medium, spendSum.High],
-                        backgroundColor: ['rgba(16,185,129,0.6)', 'rgba(245,158,11,0.6)', 'rgba(239,68,68,0.6)'],
-                        borderRadius: 8
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-            });
-        }
+        chartInstances.dist = chart;
 
-        // Activity Trend Line
-        const ctxTrend = document.getElementById('activityTrendChart');
-        if (ctxTrend) {
-            const trendData = predictions.slice(0, 20).reverse().map(p => Math.round(p.probability * 100));
-            const labels = trendData.map((_, i) => `#${i + 1}`);
-            new Chart(ctxTrend, {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                        label: 'Churn Probability %',
-                        data: trendData,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59,130,246,0.08)',
-                        tension: 0.45,
-                        fill: true,
-                        pointRadius: 4,
-                        pointHoverRadius: 7,
-                        pointBackgroundColor: '#3b82f6'
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
+        // Render interactive footer stats
+        const footerEl = document.getElementById('distFooterStats');
+        if (footerEl) {
+            const tiers = [
+                { key: 'Low', color: '#10b981', label: 'Low Risk' },
+                { key: 'Medium', color: '#f59e0b', label: 'Medium Risk' },
+                { key: 'High', color: '#ef4444', label: 'High Risk' }
+            ];
+            footerEl.innerHTML = tiers.map(t => {
+                const c = counts[t.key];
+                const s = spends[t.key];
+                const pct = totalCount > 0 ? Math.round((c / totalCount) * 100) : 0;
+                const isSelected = chartState.activeRiskFilter === t.key;
+                return `
+                    <div class="stat-pill ${isSelected ? 'active' : ''}" data-risk="${t.key}" title="Click to filter table by ${t.label}">
+                        <span class="stat-dot" style="background:${t.color};"></span>
+                        <span><strong>${t.key}:</strong> ${c} (${pct}%) • $${Math.round(s).toLocaleString()}</span>
+                    </div>
+                `;
+            }).join('');
+
+            footerEl.querySelectorAll('.stat-pill').forEach(pill => {
+                pill.onclick = () => {
+                    const r = pill.getAttribute('data-risk');
+                    filterTableByRisk(r);
+                };
             });
         }
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // 2. SPEND VS CHURN RISK (GRADIENT BARS)
+    // ─────────────────────────────────────────────────────────────
+    function renderSpendChurnChart(predictions) {
+        const ctxEl = document.getElementById('spendChurnChart');
+        if (!ctxEl) return;
+
+        if (chartInstances.spend) {
+            chartInstances.spend.destroy();
+            chartInstances.spend = null;
+        }
+
+        const counts = { Low: 0, Medium: 0, High: 0 };
+        const spends = { Low: 0, Medium: 0, High: 0 };
+
+        predictions.forEach(p => {
+            if (counts[p.risk_level] !== undefined) {
+                counts[p.risk_level]++;
+                spends[p.risk_level] += (p.monetary || 0);
+            }
+        });
+
+        const isAvg = chartState.spendView === 'avg';
+        const displayData = isAvg
+            ? [
+                counts.Low > 0 ? Math.round(spends.Low / counts.Low) : 0,
+                counts.Medium > 0 ? Math.round(spends.Medium / counts.Medium) : 0,
+                counts.High > 0 ? Math.round(spends.High / counts.High) : 0
+            ]
+            : [spends.Low, spends.Medium, spends.High];
+
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        const gridColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.07)';
+        const textColor = isLight ? '#475569' : '#94a3b8';
+
+        // Create Canvas Linear Gradients for each bar
+        const ctx = ctxEl.getContext('2d');
+        const gradLow = ctx.createLinearGradient(0, 0, 0, 240);
+        gradLow.addColorStop(0, 'rgba(16, 185, 129, 0.95)');
+        gradLow.addColorStop(1, 'rgba(16, 185, 129, 0.25)');
+
+        const gradMed = ctx.createLinearGradient(0, 0, 0, 240);
+        gradMed.addColorStop(0, 'rgba(245, 158, 11, 0.95)');
+        gradMed.addColorStop(1, 'rgba(245, 158, 11, 0.25)');
+
+        const gradHigh = ctx.createLinearGradient(0, 0, 0, 240);
+        gradHigh.addColorStop(0, 'rgba(239, 68, 68, 0.95)');
+        gradHigh.addColorStop(1, 'rgba(239, 68, 68, 0.25)');
+
+        const chart = new Chart(ctxEl, {
+            type: 'bar',
+            data: {
+                labels: ['Low Risk', 'Medium Risk', 'High Risk'],
+                datasets: [{
+                    label: isAvg ? 'Average Spend ($)' : 'Total Monetary ($)',
+                    data: displayData,
+                    backgroundColor: [gradLow, gradMed, gradHigh],
+                    borderColor: ['#10b981', '#f59e0b', '#ef4444'],
+                    borderWidth: 2,
+                    borderRadius: 10,
+                    borderSkipped: false,
+                    barPercentage: 0.55
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { top: 24, bottom: 4, left: 8, right: 8 } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(11,15,25,0.95)',
+                        titleColor: isLight ? '#0f172a' : '#f8fafc',
+                        bodyColor: isLight ? '#475569' : '#cbd5e1',
+                        borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label(context) {
+                                const idx = context.dataIndex;
+                                const tier = ['Low', 'Medium', 'High'][idx];
+                                const c = counts[tier];
+                                const s = spends[tier];
+                                const avg = c > 0 ? Math.round(s / c) : 0;
+                                return [
+                                    ` Total Spend: $${Math.round(s).toLocaleString()}`,
+                                    ` Customers: ${c}`,
+                                    ` Average / Cust: $${avg.toLocaleString()}`
+                                ];
+                            },
+                            afterLabel() {
+                                return '💡 Click bar to filter Priority Queue';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: gridColor },
+                        ticks: {
+                            color: textColor,
+                            callback(v) { return '$' + Number(v).toLocaleString(); },
+                            font: { size: 10, family: "'Inter', sans-serif" }
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            color: textColor,
+                            font: { size: 11, weight: '600', family: "'Inter', sans-serif" }
+                        }
+                    }
+                },
+                onClick(event, elements) {
+                    if (elements && elements.length > 0) {
+                        const idx = elements[0].index;
+                        const riskTiers = ['Low', 'Medium', 'High'];
+                        filterTableByRisk(riskTiers[idx]);
+                    }
+                }
+            },
+            plugins: [barValueLabelsPlugin]
+        });
+
+        chartInstances.spend = chart;
+
+        // Render summary footer stats
+        const footerEl = document.getElementById('spendFooterStats');
+        if (footerEl) {
+            const totalRev = Object.values(spends).reduce((a, b) => a + b, 0);
+            const highRiskSpend = spends.High;
+            const highRiskPct = totalRev > 0 ? Math.round((highRiskSpend / totalRev) * 100) : 0;
+            footerEl.innerHTML = `
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                    Total Revenue: <strong style="color:var(--text-primary);">$${Math.round(totalRev).toLocaleString()}</strong>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                    Revenue at Risk: <strong style="color:var(--danger);">$${Math.round(highRiskSpend).toLocaleString()} (${highRiskPct}%)</strong>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                    Mode: <strong style="color:var(--primary);">${isAvg ? 'Per Customer Average' : 'Cumulative Revenue'}</strong>
+                </div>
+            `;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 3. PREDICTION ACTIVITY TREND (INTERACTIVE LINE CHART)
+    // ─────────────────────────────────────────────────────────────
+    function renderActivityTrendChart(predictions) {
+        const ctxEl = document.getElementById('activityTrendChart');
+        if (!ctxEl) return;
+
+        if (chartInstances.trend) {
+            chartInstances.trend.destroy();
+            chartInstances.trend = null;
+        }
+
+        // Determine range
+        let subset = [...predictions];
+        if (chartState.trendRange === '10') {
+            subset = subset.slice(0, 10);
+        } else if (chartState.trendRange === '20') {
+            subset = subset.slice(0, 20);
+        }
+        // Chronological order: oldest to newest
+        subset.reverse();
+        currentTrendPredictions = subset;
+
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        const gridColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.07)';
+        const textColor = isLight ? '#475569' : '#94a3b8';
+
+        // Metric values
+        let values = [];
+        let yAxisLabel = 'Churn Probability %';
+        let yMax = 100;
+        let yMin = 0;
+
+        if (chartState.trendMetric === 'probability') {
+            values = subset.map(p => Math.round((p.probability || 0) * 100));
+            yAxisLabel = 'Churn Probability (%)';
+            yMax = 100;
+            yMin = 0;
+        } else if (chartState.trendMetric === 'monetary') {
+            values = subset.map(p => Math.round(p.monetary || 0));
+            yAxisLabel = 'Monetary Spend ($)';
+            const maxVal = Math.max(...values, 100);
+            yMax = Math.ceil(maxVal * 1.15);
+            yMin = 0;
+        } else if (chartState.trendMetric === 'recency') {
+            values = subset.map(p => Math.round(p.recency || 0));
+            yAxisLabel = 'Recency (Days Inactive)';
+            const maxVal = Math.max(...values, 30);
+            yMax = Math.ceil(maxVal * 1.15);
+            yMin = 0;
+        }
+
+        // Dynamic point colors based on individual customer risk tier
+        const pointColors = subset.map(p => {
+            if (p.probability >= 0.7 || p.risk_level === 'High') return '#ef4444';
+            if (p.probability >= 0.4 || p.risk_level === 'Medium') return '#f59e0b';
+            return '#10b981';
+        });
+
+        // Clean sequence labels: #1, #2...
+        const labels = subset.map((p, i) => `#${i + 1}`);
+
+        // Area linear gradient
+        const ctx = ctxEl.getContext('2d');
+        const areaGrad = ctx.createLinearGradient(0, 0, 0, 300);
+        areaGrad.addColorStop(0, 'rgba(59, 130, 246, 0.45)');
+        areaGrad.addColorStop(0.5, 'rgba(99, 102, 241, 0.15)');
+        areaGrad.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+        const chart = new Chart(ctxEl, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: yAxisLabel,
+                    data: values,
+                    borderColor: '#3b82f6',
+                    borderWidth: 3,
+                    backgroundColor: areaGrad,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 6,
+                    pointHoverRadius: 10,
+                    pointBackgroundColor: pointColors,
+                    pointBorderColor: isLight ? '#ffffff' : '#0b0f19',
+                    pointBorderWidth: 2,
+                    pointHoverBorderWidth: 3,
+                    pointHoverBorderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { top: 20, right: 16, bottom: 4, left: 4 } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: isLight ? 'rgba(255,255,255,0.97)' : 'rgba(11,15,25,0.97)',
+                        titleColor: isLight ? '#0f172a' : '#f8fafc',
+                        bodyColor: isLight ? '#334155' : '#cbd5e1',
+                        borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(59,130,246,0.3)',
+                        borderWidth: 1.5,
+                        padding: 12,
+                        cornerRadius: 10,
+                        displayColors: false,
+                        callbacks: {
+                            title(items) {
+                                const idx = items[0].dataIndex;
+                                const p = currentTrendPredictions[idx];
+                                return `Customer: ${p.customer_id} (Seq #${idx + 1})`;
+                            },
+                            label(context) {
+                                const idx = context.dataIndex;
+                                const p = currentTrendPredictions[idx];
+                                const prob = Math.round((p.probability || 0) * 100);
+                                const riskEmoji = p.risk_level === 'High' ? '🔴' : p.risk_level === 'Medium' ? '🟡' : '🟢';
+                                return [
+                                    ` Risk Tier: ${p.risk_level} ${riskEmoji}`,
+                                    ` Churn Probability: ${prob}%`,
+                                    ` Lifetime Spend: $${Number(p.monetary).toLocaleString()}`,
+                                    ` Recency: ${p.recency} days`
+                                ];
+                            },
+                            afterLabel() {
+                                return '👉 Click node to view customer deep-dive';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        min: yMin,
+                        max: yMax,
+                        grid: { color: gridColor },
+                        ticks: {
+                            color: textColor,
+                            font: { size: 10, family: "'Inter', sans-serif" },
+                            callback(v) {
+                                if (chartState.trendMetric === 'probability') return v + '%';
+                                if (chartState.trendMetric === 'monetary') return '$' + Number(v).toLocaleString();
+                                return v;
+                            }
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            color: textColor,
+                            font: { size: 11, family: "'Inter', sans-serif" }
+                        }
+                    }
+                },
+                onClick(event, elements) {
+                    if (elements && elements.length > 0) {
+                        const idx = elements[0].index;
+                        const pred = currentTrendPredictions[idx];
+                        if (pred) {
+                            openSidePanel(pred);
+                            showToast(`Opened inspection dossier for ${pred.customer_id}`, 'info', 2000);
+                        }
+                    }
+                }
+            },
+            plugins: [trendThresholdPlugin]
+        });
+
+        chartInstances.trend = chart;
+
+        // Update summary chip
+        const chip = document.getElementById('trendSummaryChip');
+        if (chip && values.length > 0) {
+            const latest = values[values.length - 1];
+            const peak = Math.max(...values);
+            const unit = chartState.trendMetric === 'probability' ? '%' : chartState.trendMetric === 'monetary' ? '$' : 'd';
+            chip.innerHTML = chartState.trendMetric === 'monetary'
+                ? `Latest: <strong>$${latest.toLocaleString()}</strong> | Peak: <strong>$${peak.toLocaleString()}</strong>`
+                : `Latest: <strong>${latest}${unit}</strong> | Peak: <strong>${peak}${unit}</strong>`;
+        }
+    }
+
+    // Re-render charts when light/dark theme changes
+    window.addEventListener('themechange', () => {
+        if (allPredictions && allPredictions.length > 0) {
+            buildCharts(allPredictions);
+        }
+    });
 
     // ---- Deletion & Reset Handlers ----
     window.deletePrediction = async function(id) {

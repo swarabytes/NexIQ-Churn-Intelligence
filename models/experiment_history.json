@@ -1,0 +1,197 @@
+[
+  {
+    "run_id": "run_20261101_175452",
+    "timestamp": "2026-11-01 17:54:52",
+    "imbalance_method": "smote",
+    "criterion": "pr_auc",
+    "best_model": "Logistic Regression",
+    "best_f1": 0.9811,
+    "best_accuracy": 0.99,
+    "best_recall": 1.0,
+    "models_summary": [
+      {
+        "key": "logistic_regression",
+        "name": "Logistic Regression",
+        "rank": 1,
+        "f1": 0.9811,
+        "acc": 0.99,
+        "rec": 1.0,
+        "auc": 0.9999
+      },
+      {
+        "key": "xgboost",
+        "name": "XGBoost",
+        "rank": 2,
+        "f1": 0.9126,
+        "acc": 0.955,
+        "rec": 0.9038,
+        "auc": 0.9812
+      },
+      {
+        "key": "random_forest",
+        "name": "Random Forest",
+        "rank": 3,
+        "f1": 0.9,
+        "acc": 0.95,
+        "rec": 0.8654,
+        "auc": 0.9718
+      }
+    ]
+  },
+  {
+    "run_id": "run_20261101_175415",
+    "timestamp": "2026-11-01 17:54:15",
+    "imbalance_method": "smote",
+    "criterion": "pr_auc",
+    "best_model": "Logistic Regression",
+    "best_f1": 0.9811,
+    "best_accuracy": 0.99,
+    "best_recall": 1.0,
+    "models_summary": [
+      {
+        "key": "logistic_regression",
+        "name": "Logistic Regression",
+        "rank": 1,
+        "f1": 0.9811,
+        "acc": 0.99,
+        "rec": 1.0,
+        "auc": 0.9999
+      },
+      {
+        "key": "xgboost",
+        "name": "XGBoost",
+        "rank": 2,
+        "f1": 0.9126,
+        "acc": 0.955,
+        "rec": 0.9038,
+        "auc": 0.9812
+      },
+      {
+        "key": "random_forest",
+        "name": "Random Forest",
+        "rank": 3,
+        "f1": 0.9,
+        "acc": 0.95,
+        "rec": 0.8654,
+        "auc": 0.9718
+      }
+    ]
+  },
+  {
+    "run_id": "run_20261101_174429",
+    "timestamp": "2026-11-01 17:44:29",
+    "imbalance_method": "smote",
+    "criterion": "f1_score",
+    "best_model": "Logistic Regression",
+    "best_f1": 0.9811,
+    "best_accuracy": 0.99,
+    "best_recall": 1.0,
+    "models_summary": [
+      {
+        "key": "logistic_regression",
+        "name": "Logistic Regression",
+        "rank": 1,
+        "f1": 0.9811,
+        "acc": 0.99,
+        "rec": 1.0,
+        "auc": 0.9999
+      },
+      {
+        "key": "xgboost",
+        "name": "XGBoost",
+        "rank": 2,
+        "f1": 0.9126,
+        "acc": 0.955,
+        "rec": 0.9038,
+        "auc": 0.9812
+      },
+      {
+        "key": "random_forest",
+        "name": "Random Forest",
+        "rank": 3,
+        "f1": 0.9,
+        "acc": 0.95,
+        "rec": 0.8654,
+        "auc": 0.9718
+      }
+    ]
+  },
+  {
+    "run_id": "run_20261101_174408",
+    "timestamp": "2026-11-01 17:44:08",
+    "imbalance_method": "balanced",
+    "criterion": "pr_auc",
+    "best_model": "Logistic Regression",
+    "best_f1": 0.963,
+    "best_accuracy": 0.98,
+    "best_recall": 1.0,
+    "models_summary": [
+      {
+        "key": "logistic_regression",
+        "name": "Logistic Regression",
+        "rank": 1,
+        "f1": 0.963,
+        "acc": 0.98,
+        "rec": 1.0,
+        "auc": 0.9992
+      },
+      {
+        "key": "xgboost",
+        "name": "XGBoost",
+        "rank": 2,
+        "f1": 0.9307,
+        "acc": 0.965,
+        "rec": 0.9038,
+        "auc": 0.9862
+      },
+      {
+        "key": "random_forest",
+        "name": "Random Forest",
+        "rank": 3,
+        "f1": 0.8776,
+        "acc": 0.94,
+        "rec": 0.8269,
+        "auc": 0.9676
+      }
+    ]
+  },
+  {
+    "run_id": "run_20261101_173354",
+    "timestamp": "2026-11-01 17:33:54",
+    "imbalance_method": "balanced",
+    "criterion": "f1_score",
+    "best_model": "Logistic Regression",
+    "best_f1": 0.963,
+    "best_accuracy": 0.98,
+    "best_recall": 1.0,
+    "models_summary": [
+      {
+        "key": "logistic_regression",
+        "name": "Logistic Regression",
+        "rank": 1,
+        "f1": 0.963,
+        "acc": 0.98,
+        "rec": 1.0,
+        "auc": 0.9992
+      },
+      {
+        "key": "xgboost",
+        "name": "XGBoost",
+        "rank": 2,
+        "f1": 0.9307,
+        "acc": 0.965,
+        "rec": 0.9038,
+        "auc": 0.9862
+      },
+      {
+        "key": "random_forest",
+        "name": "Random Forest",
+        "rank": 3,
+        "f1": 0.8776,
+        "acc": 0.94,
+        "rec": 0.8269,
+        "auc": 0.9676
+      }
+    ]
+  }
+]

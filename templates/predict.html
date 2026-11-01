@@ -1,91 +1,269 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="predict-container anim-fade-in">
-    <div class="form-panel glass-card">
-        <h2>Risk Prediction Engine</h2>
-        <div class="form-actions">
-            <button id="btn-autofill" class="btn-secondary">Autofill Sample</button>
-            <button id="btn-paste-json" class="btn-secondary">Paste JSON</button>
-            <textarea id="json-input" placeholder='Paste JSON e.g. {"recency": 10, ...}' style="display:none;"></textarea>
-            <button id="btn-parse-json" style="display:none;" class="btn-primary">Apply JSON</button>
+<div class="anim-fade-in">
+    <!-- PAGE HEADER & TAB BAR -->
+    <div class="churn-header-container">
+        <div class="churn-title-block">
+            <h2 class="churn-page-title">Customer Churn Intelligence</h2>
+            <p class="churn-page-subtitle">Real-time individual risk inference &amp; comprehensive multi-model benchmark evaluation.</p>
         </div>
         
-        <form id="predict-form" class="premium-form">
-            <div class="input-grid">
-                <div class="form-group">
-                    <label>Recency (Days)</label>
-                    <input type="number" id="recency" name="recency" step="any" required>
-                </div>
-                <div class="form-group">
-                    <label>Frequency (Orders)</label>
-                    <input type="number" id="frequency" name="frequency" step="any" required>
-                </div>
-                <div class="form-group">
-                    <label>Monetary (Spend $)</label>
-                    <input type="number" id="monetary" name="monetary" step="any" required>
-                </div>
-                <div class="form-group">
-                    <label>Avg Order Value ($)</label>
-                    <input type="number" id="average_order_value" name="average_order_value" step="any" required>
-                </div>
-                <div class="form-group">
-                    <label>Category Diversity</label>
-                    <input type="number" id="category_diversity" name="category_diversity" step="any" required>
-                </div>
-                <div class="form-group">
-                    <label>Avg Review Score</label>
-                    <input type="number" id="average_review_score" name="average_review_score" step="any" required>
-                </div>
-                <div class="form-group">
-                    <label>Payment Count</label>
-                    <input type="number" id="payment_count" name="payment_count" step="any" required>
-                </div>
-                <div class="form-group">
-                    <label>Delivery Delay (Days)</label>
-                    <input type="number" id="delivery_delay" name="delivery_delay" step="any" required>
-                </div>
-                <div class="form-group">
-                    <label>Inactivity Days</label>
-                    <input type="number" id="inactivity_days" name="inactivity_days" step="any" required>
-                </div>
-            </div>
-            <button type="submit" class="btn-primary w-full" id="btn-predict">Analyze Risk Potential</button>
-        </form>
+        <div class="churn-tab-bar" role="tablist">
+            <button type="button" class="churn-tab-btn active" id="tab-btn-single" data-tab="tab-single-predict" role="tab" aria-selected="true">
+                <span class="tab-icon">🎯</span> Risk Prediction Engine
+            </button>
+            <button type="button" class="churn-tab-btn" id="tab-btn-comparison" data-tab="tab-model-comparison" role="tab" aria-selected="false">
+                <span class="tab-icon">📊</span> Model Comparison
+            </button>
+        </div>
     </div>
 
-    <!-- RESULT SECTION -->
-    <div id="result-section" class="result-panel glass-card" style="display: none;">
-        <h3>AI Analysis Result</h3>
-        <div class="result-details">
-            <div class="header-result">
-                <span>Customer ID: <strong id="res-cust-id"></strong></span>
-                <span class="badge" id="res-badge"></span>
-            </div>
-            
-            <div class="gauge-container">
-                <div class="circular-progress" id="circular-progress">
-                    <div class="inner-circle" id="res-prob-anim">0%</div>
+    <!-- TAB 1: SINGLE CUSTOMER PREDICTION ENGINE -->
+    <div id="tab-single-predict" class="churn-tab-pane active anim-fade-in">
+        <div class="predict-container">
+            <div class="form-panel glass-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <h3 style="font-size: 1.35rem; font-weight: 700; margin: 0;">Risk Prediction Engine</h3>
+                    <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: var(--primary); border: 1px solid rgba(59, 130, 246, 0.3);">
+                        Model: Logistic Regression (Calibrated)
+                    </span>
                 </div>
-                <p>Churn Probability</p>
-            </div>
-            
-            <div class="health-bar-container">
-                <p>Health Score</p>
-                <div class="health-bar-bg">
-                    <div class="health-bar-fill" id="res-health-fill"></div>
+                
+                <div class="form-actions">
+                    <button type="button" id="btn-autofill" class="btn-secondary">Autofill Sample</button>
+                    <button type="button" id="btn-paste-json" class="btn-secondary">Paste JSON</button>
+                    <textarea id="json-input" placeholder='Paste JSON e.g. {"recency": 10, ...}' style="display:none;"></textarea>
+                    <button type="button" id="btn-parse-json" style="display:none;" class="btn-primary">Apply JSON</button>
                 </div>
+                
+                <form id="predict-form" class="premium-form">
+                    <div class="input-grid">
+                        <div class="form-group">
+                            <label>Recency (Days)</label>
+                            <input type="number" id="recency" name="recency" step="any" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Frequency (Orders)</label>
+                            <input type="number" id="frequency" name="frequency" step="any" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Monetary (Spend $)</label>
+                            <input type="number" id="monetary" name="monetary" step="any" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Avg Order Value ($)</label>
+                            <input type="number" id="average_order_value" name="average_order_value" step="any" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Category Diversity</label>
+                            <input type="number" id="category_diversity" name="category_diversity" step="any" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Avg Review Score</label>
+                            <input type="number" id="average_review_score" name="average_review_score" step="any" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Payment Count</label>
+                            <input type="number" id="payment_count" name="payment_count" step="any" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Delivery Delay (Days)</label>
+                            <input type="number" id="delivery_delay" name="delivery_delay" step="any" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Inactivity Days</label>
+                            <input type="number" id="inactivity_days" name="inactivity_days" step="any" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary w-full" id="btn-predict">Analyze Risk Potential</button>
+                </form>
             </div>
 
-            <div class="insight-box glass-card sub-card">
-                <h4>AI Insights</h4>
-                <p id="res-insight"></p>
-            </div>
-            
-            <div class="recommended-actions glass-card sub-card">
-                <h4>Recommended Actions</h4>
-                <ul id="res-actions"></ul>
+            <!-- RESULT SECTION -->
+            <div id="result-section" class="result-panel glass-card" style="display: none;">
+                <h3>AI Analysis Result</h3>
+                <div class="result-details">
+                    <div class="header-result">
+                        <span>Customer ID: <strong id="res-cust-id"></strong></span>
+                        <span class="badge" id="res-badge"></span>
+                    </div>
+                    
+                    <div class="gauge-container">
+                        <div class="circular-progress" id="circular-progress">
+                            <div class="inner-circle" id="res-prob-anim">0%</div>
+                        </div>
+                        <p>Churn Probability</p>
+                    </div>
+                    
+                    <div class="health-bar-container">
+                        <p>Health Score</p>
+                        <div class="health-bar-bg">
+                            <div class="health-bar-fill" id="res-health-fill"></div>
+                        </div>
+                    </div>
+
+                    <div class="insight-box glass-card sub-card">
+                        <h4>AI Insights</h4>
+                        <p id="res-insight"></p>
+                    </div>
+                    
+                    <div class="recommended-actions glass-card sub-card">
+                        <h4>Recommended Actions</h4>
+                        <ul id="res-actions"></ul>
+                    </div>
+
+                    <div style="margin-top: 1.5rem; text-align: center;">
+                        <button type="button" id="btn-jump-to-compare" class="btn-secondary" style="width: 100%; border-color: rgba(59, 130, 246, 0.4); color: var(--primary); font-weight: 600;">
+                            🔍 Compare Across All 3 Models &rarr;
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
+    </div>
+
+    <!-- TAB 2: MODEL COMPARISON TAB -->
+    <div id="tab-model-comparison" class="churn-tab-pane anim-fade-in" style="display: none;">
+        <!-- 3 Model Executive Cards Grid -->
+        <div class="model-cards-grid">
+            <div class="glass-card model-card model-card-champion">
+                <div class="model-card-top-row">
+                    <div class="model-card-header">
+                        <span class="model-icon">📈</span>
+                        <div class="model-title-wrap">
+                            <h4>Logistic Regression</h4>
+                            <span class="model-type">Linear Probabilistic Classifier</span>
+                        </div>
+                    </div>
+                    <span class="model-card-badge champion">Champion &middot; Production</span>
+                </div>
+                <div class="model-kpi-row">
+                    <div class="model-kpi">
+                        <span class="model-kpi-label">Accuracy</span>
+                        <span class="model-kpi-val" style="color: var(--success);">98.0%</span>
+                    </div>
+                    <div class="model-kpi">
+                        <span class="model-kpi-label">F1-Score</span>
+                        <span class="model-kpi-val" style="color: #60a5fa;">0.963</span>
+                    </div>
+                    <div class="model-kpi">
+                        <span class="model-kpi-label">ROC-AUC</span>
+                        <span class="model-kpi-val" style="color: #a78bfa;">0.999</span>
+                    </div>
+                </div>
+                <p class="model-desc">Optimal calibration, transparent feature weights, and sub-millisecond inference for live customer retention alerting.</p>
+            </div>
+
+            <div class="glass-card model-card">
+                <div class="model-card-top-row">
+                    <div class="model-card-header">
+                        <span class="model-icon">🌲</span>
+                        <div class="model-title-wrap">
+                            <h4>Random Forest</h4>
+                            <span class="model-type">Ensemble (100 Trees)</span>
+                        </div>
+                    </div>
+                    <span class="model-card-badge ensemble">Ensemble</span>
+                </div>
+                <div class="model-kpi-row">
+                    <div class="model-kpi">
+                        <span class="model-kpi-label">Accuracy</span>
+                        <span class="model-kpi-val" style="color: var(--success);">93.5%</span>
+                    </div>
+                    <div class="model-kpi">
+                        <span class="model-kpi-label">F1-Score</span>
+                        <span class="model-kpi-val" style="color: #60a5fa;">0.869</span>
+                    </div>
+                    <div class="model-kpi">
+                        <span class="model-kpi-label">ROC-AUC</span>
+                        <span class="model-kpi-val" style="color: #a78bfa;">0.978</span>
+                    </div>
+                </div>
+                <p class="model-desc">Robust non-linear decision boundaries, handles complex multi-feature interactions, and resistant to noisy outliers.</p>
+            </div>
+
+            <div class="glass-card model-card">
+                <div class="model-card-top-row">
+                    <div class="model-card-header">
+                        <span class="model-icon">⚡</span>
+                        <div class="model-title-wrap">
+                            <h4>XGBoost</h4>
+                            <span class="model-type">Gradient Boosted Trees (XGB)</span>
+                        </div>
+                    </div>
+                    <span class="model-card-badge xgboost">XGBoost</span>
+                </div>
+                <div class="model-kpi-row">
+                    <div class="model-kpi">
+                        <span class="model-kpi-label">Accuracy</span>
+                        <span class="model-kpi-val" style="color: var(--success);">96.0%</span>
+                    </div>
+                    <div class="model-kpi">
+                        <span class="model-kpi-label">F1-Score</span>
+                        <span class="model-kpi-val" style="color: #60a5fa;">0.920</span>
+                    </div>
+                    <div class="model-kpi">
+                        <span class="model-kpi-label">ROC-AUC</span>
+                        <span class="model-kpi-val" style="color: #a78bfa;">0.987</span>
+                    </div>
+                </div>
+                <p class="model-desc">Gradient-boosted ensemble excelling at complex patterns; top accuracy-recall balance and industry-standard for tabular data churn tasks.</p>
+            </div>
+        </div>
+
+        <!-- Benchmark Matrix Table -->
+        <div class="glass-card" style="margin-top: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                    <h3 style="margin: 0; font-size: 1.25rem;">Multi-Model Benchmark Performance Matrix</h3>
+                    <p style="margin: 0.25rem 0 0 0; font-size: 0.88rem; color: var(--text-secondary);">
+                        Evaluated on stratified hold-out test set (Olist E-Commerce Churn Dataset).
+                    </p>
+                </div>
+                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3);">
+                    3 Models Trained &amp; Validated
+                </span>
+            </div>
+
+            <div style="overflow-x: auto; width: 100%;">
+                <table class="premium-table model-matrix-table">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 170px;">Model Architecture</th>
+                            <th style="text-align: center; white-space: nowrap;">Accuracy</th>
+                            <th style="text-align: center; white-space: nowrap;">Precision</th>
+                            <th style="text-align: center; white-space: nowrap;">Recall</th>
+                            <th style="text-align: center; white-space: nowrap;">F1-Score</th>
+                            <th style="text-align: center; white-space: nowrap;">Specificity</th>
+                            <th style="text-align: center; white-space: nowrap;">ROC-AUC</th>
+                            <th style="min-width: 220px; text-align: center; white-space: nowrap;">Confusion Matrix</th>
+                            <th style="min-width: 180px; text-align: center; white-space: nowrap;">Production Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="model-comparison-table-body">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Comparative Charts -->
+        <div class="charts-layout" style="margin-top: 1.5rem;">
+            <div class="chart-container glass-card">
+                <h4>Cross-Model Metric Benchmark Comparison</h4>
+                <div style="position: relative; height: 320px;">
+                    <canvas id="modelMetricsBarChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-container glass-card">
+                <h4>Feature Importance / Impact Across Models</h4>
+                <div style="position: relative; height: 320px;">
+                    <canvas id="featureImportanceCompareChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+
     </div>
 </div>
 {% endblock %}

@@ -13,6 +13,14 @@
         rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        (function() {
+            try {
+                var theme = localStorage.getItem('nexiq_theme') || 'dark';
+                document.documentElement.setAttribute('data-theme', theme);
+            } catch(e) {}
+        })();
+    </script>
 </head>
 
 <body>
@@ -38,6 +46,12 @@
             {% else %}
             <li><a href="/login" style="color: #2ed573; font-weight: 600;">Login / Register</a></li>
             {% endif %}
+            <li class="theme-toggle-item">
+                <button id="theme-toggle" class="theme-toggle-btn" type="button" aria-label="Toggle Light and Dark Theme" title="Toggle Light / Dark Mode">
+                    <span class="theme-toggle-icon">🌙</span>
+                    <span class="theme-toggle-label">Dark</span>
+                </button>
+            </li>
         </ul>
     </nav>
     <main>

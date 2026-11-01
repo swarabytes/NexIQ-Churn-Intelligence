@@ -71,20 +71,80 @@
 
     <!-- Charts -->
     <div class="charts-layout">
-        <div class="chart-container glass-card">
-            <h4>Risk Distribution</h4>
-            <canvas id="riskDistChart"></canvas>
+        <div class="chart-container glass-card" id="card-risk-dist">
+            <div class="chart-header">
+                <div>
+                    <h4>Risk Distribution</h4>
+                    <p class="chart-subtitle">Portfolio breakdown by customer churn risk tier</p>
+                </div>
+                <div class="chart-controls">
+                    <div class="chart-pill-group" id="distMetricPills">
+                        <button class="chart-pill active" data-metric="count" title="View customer count distribution">Count</button>
+                        <button class="chart-pill" data-metric="revenue" title="View revenue at risk distribution">Revenue ($)</button>
+                    </div>
+                    <button class="chart-reset-btn" id="resetDistFilter" style="display:none;" title="Clear chart filter">✕ Reset Filter</button>
+                </div>
+            </div>
+            <div class="chart-canvas-wrapper" style="position: relative; height: 260px;">
+                <canvas id="riskDistChart"></canvas>
+            </div>
+            <div class="chart-footer-stats" id="distFooterStats"></div>
         </div>
-        <div class="chart-container glass-card">
-            <h4>Spend vs Churn Probability</h4>
-            <canvas id="spendChurnChart"></canvas>
+
+        <div class="chart-container glass-card" id="card-spend-churn">
+            <div class="chart-header">
+                <div>
+                    <h4>Spend vs Churn Risk</h4>
+                    <p class="chart-subtitle">Revenue exposure and monetary concentration by tier</p>
+                </div>
+                <div class="chart-controls">
+                    <div class="chart-pill-group" id="spendMetricPills">
+                        <button class="chart-pill active" data-view="total" title="Total monetary value per segment">Total Spend</button>
+                        <button class="chart-pill" data-view="avg" title="Average spend per customer in segment">Avg Spend</button>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-canvas-wrapper" style="position: relative; height: 260px;">
+                <canvas id="spendChurnChart"></canvas>
+            </div>
+            <div class="chart-footer-stats" id="spendFooterStats"></div>
         </div>
     </div>
 
     <div class="charts-layout single">
-        <div class="chart-container glass-card">
-            <h4>Prediction Activity Trend</h4>
-            <canvas id="activityTrendChart"></canvas>
+        <div class="chart-container glass-card" id="card-activity-trend">
+            <div class="chart-header">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <h4>Prediction Activity Trend</h4>
+                        <span class="interactive-tag">⚡ Interactive: Click node to open customer dossier</span>
+                    </div>
+                    <p class="chart-subtitle">Chronological sequence of individual customer risk evaluations</p>
+                </div>
+                <div class="chart-controls">
+                    <div class="chart-pill-group" id="trendMetricPills">
+                        <button class="chart-pill active" data-metric="probability">Probability %</button>
+                        <button class="chart-pill" data-metric="monetary">Monetary ($)</button>
+                        <button class="chart-pill" data-metric="recency">Recency (Days)</button>
+                    </div>
+                    <div class="chart-pill-group" id="trendRangePills">
+                        <button class="chart-pill" data-range="10">Last 10</button>
+                        <button class="chart-pill active" data-range="20">Last 20</button>
+                        <button class="chart-pill" data-range="all">All</button>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-canvas-wrapper" style="position: relative; height: 320px;">
+                <canvas id="activityTrendChart"></canvas>
+            </div>
+            <div class="trend-legend-bar">
+                <div class="trend-zone-group">
+                    <span class="trend-zone-badge"><span class="zone-dot green"></span> Safe (< 40%)</span>
+                    <span class="trend-zone-badge"><span class="zone-dot yellow"></span> Caution (40%–70%)</span>
+                    <span class="trend-zone-badge"><span class="zone-dot red"></span> High Risk (> 70%)</span>
+                </div>
+                <span class="trend-info-chip" id="trendSummaryChip">Latest: -- | Peak: --</span>
+            </div>
         </div>
     </div>
 

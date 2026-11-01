@@ -9,6 +9,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/academic.css') }}"/>
+<script>
+(function() {
+  try {
+    var theme = localStorage.getItem('nexiq_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch(e) {}
+})();
+</script>
 </head>
 <body>
 
@@ -31,6 +39,10 @@
       <span style="color:var(--text-tertiary);">&middot;</span>
       <span style="font-weight:600;">Live Physical Dataset</span>
     </div>
+    <button id="academic-theme-toggle" class="theme-toggle-btn" type="button" aria-label="Toggle theme" title="Toggle Light / Dark Mode">
+      <span class="theme-toggle-icon">☀️</span>
+      <span class="theme-toggle-label">Light</span>
+    </button>
     <a href="/" class="nav-back-link">&larr; Customer App</a>
   </div>
 </nav>
@@ -56,6 +68,9 @@
   <div class="sidebar-nav-list">
     <button class="sidebar-btn" data-type="classification" onclick="selectAnalysisFromSidebar('classification', this)">
       <span class="sidebar-icon">🤖</span> Classification
+    </button>
+    <button class="sidebar-btn" data-view="model_comparison" onclick="switchLabTab('model_comparison', this)">
+      <span class="sidebar-icon">🏆</span> Model Comparison &amp; Selection
     </button>
     <button class="sidebar-btn" data-type="regression" onclick="selectAnalysisFromSidebar('regression', this)">
       <span class="sidebar-icon">📈</span> Regression
@@ -133,6 +148,15 @@
   <!-- Quick Access Analytical Modules -->
   <div class="section-heading" style="margin-bottom:0.8rem;">Analytical Modules</div>
   <div class="overview-grid">
+    <div class="module-card mc-overview-highlight-card">
+      <div class="module-header">
+        <span class="module-title">🏆 ML Model Comparison &amp; Selection</span>
+        <span class="module-badge" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;">Production ML</span>
+      </div>
+      <p class="module-desc">Automated benchmark of <strong>Logistic Regression</strong>, <strong>Random Forest</strong>, and <strong>XGBoost</strong> with leak-free SMOTE/balanced evaluation, multi-model ROC/PR curves, and 1-click production deployment.</p>
+      <button class="module-link-btn" onclick="switchLabTab('model_comparison')">Compare &amp; Deploy Models &rarr;</button>
+    </div>
+
     <div class="module-card">
       <div class="module-header">
         <span class="module-title">🤖 Classification</span>
@@ -392,6 +416,181 @@
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- VIEW: DATA EXPLORATION                                          -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VIEW: MODEL COMPARISON & SELECTION                             -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="view-model_comparison" class="view">
+  <!-- Hero & Controls Header -->
+  <div class="mc-hero-header">
+    <div class="mc-hero-info">
+      <div class="mc-tag"><span class="mc-pulse-dot"></span> AUTOMATED ML BENCHMARK &amp; PRODUCTION SELECTION</div>
+      <h2 class="mc-title">Top 3 Machine Learning Models Comparison</h2>
+      <p class="mc-subtitle">
+        Rigorous, leak-free evaluation of <strong>Logistic Regression</strong>, <strong>Random Forest</strong>, and <strong>XGBoost</strong> across 10 academic and operational metrics on the physical Olist e-commerce dataset.
+      </p>
+    </div>
+    <div class="mc-controls-panel">
+      <div class="mc-control-item">
+        <label for="mc-imbalance-select">Imbalance Strategy</label>
+        <select id="mc-imbalance-select" class="mc-select" onchange="onModelComparisonParamChange()">
+          <option value="balanced" selected>Cost-Sensitive (class_weight='balanced')</option>
+          <option value="smote">SMOTE Over-sampling (Train-only)</option>
+        </select>
+      </div>
+      <div class="mc-control-item">
+        <label for="mc-criterion-select">Ranking Criterion</label>
+        <select id="mc-criterion-select" class="mc-select" onchange="onModelComparisonParamChange()">
+          <option value="f1_score" selected>F1-Score (Primary)</option>
+          <option value="pr_auc">PR-AUC (Precision-Recall Area)</option>
+          <option value="recall">Recall (Churn Sensitivity)</option>
+          <option value="roc_auc">ROC-AUC (Discrimination)</option>
+          <option value="accuracy">Accuracy (Overall Correctness)</option>
+        </select>
+      </div>
+      <div class="mc-control-actions">
+        <button id="btn-retrain-models" class="mc-btn-primary" onclick="triggerTrainAndCompare()">
+          <span class="btn-spinner hidden" id="mc-train-spinner"></span>
+          <span class="btn-text">⚡ Re-Train &amp; Benchmark</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Production Model Banner -->
+  <div id="mc-active-prod-banner" class="mc-active-banner">
+    <div class="mc-active-icon">🚀</div>
+    <div class="mc-active-content">
+      <div class="mc-active-label">CURRENT ACTIVE PRODUCTION MODEL</div>
+      <div class="mc-active-name" id="mc-active-model-name">Logistic Regression (Linear Probabilistic Classifier)</div>
+      <div class="mc-active-details" id="mc-active-model-details">
+        Deployed to <code>pipeline.pkl</code> &middot; Powers Single Customer Predictions (<code>/predict</code>) and Bulk File Ingestion (<code>/bulk-upload</code>)
+      </div>
+    </div>
+    <div class="mc-active-badge">
+      <span class="status-indicator-live"></span> In Production
+    </div>
+  </div>
+
+  <!-- Section A: Model Performance Cards -->
+  <div class="section-heading" style="margin-top:1.5rem; margin-bottom: 0.8rem;">
+    <span>Model Performance Cards</span>
+    <span class="section-subheading">Stratified 80:20 Holdout (200 test samples, 52 churners, 148 non-churners)</span>
+  </div>
+  <div class="mc-cards-grid" id="mc-model-cards-container">
+    <div class="mc-loading-placeholder">Loading model evaluations...</div>
+  </div>
+
+  <!-- Section B: Select Your Production Model Hub -->
+  <div class="mc-selection-hub">
+    <div class="mc-selection-header">
+      <div>
+        <h3 class="mc-selection-title">Select Your Production Model</h3>
+        <p class="mc-selection-desc">
+          Choose which verified model powers live inference across NexIQ. Overwriting <code>pipeline.pkl</code> automatically preserves a backup in <code>models/backup_pipeline.pkl</code>.
+        </p>
+      </div>
+      <div class="mc-auto-btn-container">
+        <button class="mc-btn-gold" onclick="selectModelForProduction('auto')">
+          👑 Automatically Select Best Model
+        </button>
+      </div>
+    </div>
+    <div class="mc-selection-actions" id="mc-selection-buttons-container">
+      <!-- Buttons rendered dynamically -->
+    </div>
+  </div>
+
+  <!-- Section C: Visual Comparisons (Charts) -->
+  <div class="section-heading" style="margin-top:2rem; margin-bottom: 0.8rem;">
+    <span>Performance Comparison &amp; Diagnostic Curves</span>
+  </div>
+  
+  <div class="mc-charts-row">
+    <!-- Grouped Bar Chart -->
+    <div class="mc-chart-card mc-chart-full">
+      <div class="mc-chart-card-header">
+        <div>
+          <div class="mc-chart-title">Comprehensive Multi-Metric Benchmark</div>
+          <div class="mc-chart-subtitle">Side-by-side grouped evaluation across all primary classification metrics</div>
+        </div>
+      </div>
+      <div class="mc-chart-canvas-container" style="height: 330px;">
+        <canvas id="mc-grouped-bar-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="mc-charts-grid-2">
+    <!-- ROC Curves -->
+    <div class="mc-chart-card">
+      <div class="mc-chart-card-header">
+        <div>
+          <div class="mc-chart-title">ROC Curves (Receiver Operating Characteristic)</div>
+          <div class="mc-chart-subtitle">True Positive Rate vs False Positive Rate across decision thresholds</div>
+        </div>
+      </div>
+      <div class="mc-chart-canvas-container" style="height: 300px;">
+        <canvas id="mc-roc-curve-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Precision-Recall Curves -->
+    <div class="mc-chart-card">
+      <div class="mc-chart-card-header">
+        <div>
+          <div class="mc-chart-title">Precision-Recall Curves (PR-AUC)</div>
+          <div class="mc-chart-subtitle">Precision vs Recall tradeoffs (vital for imbalanced customer churn)</div>
+        </div>
+      </div>
+      <div class="mc-chart-canvas-container" style="height: 300px;">
+        <canvas id="mc-pr-curve-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section D: Confusion Matrices -->
+  <div class="section-heading" style="margin-top:2rem; margin-bottom: 0.8rem;">
+    <span>Confusion Matrices (200 Holdout Samples)</span>
+    <span class="section-subheading">Actual vs Predicted: True Negatives (TN), False Positives (FP), False Negatives (FN), True Positives (TP)</span>
+  </div>
+  <div class="mc-cm-grid" id="mc-confusion-matrices-container">
+    <!-- Rendered dynamically -->
+  </div>
+
+  <!-- Section E: Experiment History -->
+  <div class="section-heading" style="margin-top:2rem; margin-bottom: 0.8rem;">
+    <span>Experiment &amp; Training Run History</span>
+    <span class="section-subheading">Audit trail of hyperparameter runs, imbalance adjustments, and evaluation benchmarks</span>
+  </div>
+  <div class="mc-history-card">
+    <div class="table-responsive">
+      <table class="academic-table mc-history-table">
+        <thead>
+          <tr>
+            <th>Run ID &amp; Time</th>
+            <th>Imbalance Method</th>
+            <th>Ranking Criterion</th>
+            <th>Top Ranked Model</th>
+            <th>Top F1</th>
+            <th>Top Recall</th>
+            <th>Top Accuracy</th>
+            <th>Models Compared</th>
+          </tr>
+        </thead>
+        <tbody id="mc-history-tbody">
+          <tr>
+            <td colspan="8" style="text-align:center; padding: 1.5rem; color: var(--text-muted);">
+              Loading experiment history...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /view-model_comparison -->
+
+
 <div id="view-exploration" class="view">
   <div class="view-header">
     <h1>Data Exploration &amp; Feature Profiling</h1>
