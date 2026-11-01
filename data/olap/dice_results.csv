@@ -1,0 +1,13 @@
+state,year,category,order_count,customer_count,item_count,total_sales
+MG,2017,bed_bath_table,563,543,672.0,65254.3
+MG,2017,health_beauty,405,390,437.0,55027.68
+MG,2018,bed_bath_table,556,546,666.0,65314.68
+MG,2018,health_beauty,593,591,639.0,100735.52
+RJ,2017,bed_bath_table,724,700,867.0,81474.39
+RJ,2017,health_beauty,399,390,430.0,64463.88
+RJ,2018,bed_bath_table,662,648,796.0,68000.03
+RJ,2018,health_beauty,562,553,628.0,79634.06
+SP,2017,bed_bath_table,1921,1869,2262.0,210237.03
+SP,2017,health_beauty,1284,1251,1402.0,157299.11000000002
+SP,2018,bed_bath_table,2471,2429,3033.0,273124.67
+SP,2018,health_beauty,2457,2426,2774.0,303901.51

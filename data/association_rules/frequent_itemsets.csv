@@ -1,0 +1,109 @@
+support,itemsets,length
+0.0018796992481203006,frozenset({'agro_industry_and_commerce'}),1
+0.002592332479550525,frozenset({'air_conditioning'}),1
+0.0020759315872097826,frozenset({'art'}),1
+0.00023754441047674132,frozenset({'arts_and_craftmanship'}),1
+0.003604478228538379,frozenset({'audio'}),1
+0.03999008510286706,frozenset({'auto'}),1
+0.02962075518466496,frozenset({'baby'}),1
+0.09707303974221268,frozenset({'bed_bath_table'}),1
+0.005215649012641494,frozenset({'books_general_interest'}),1
+0.0005473849458811865,frozenset({'books_imported'}),1
+0.0026852846401718583,frozenset({'books_technical'}),1
+0.00012393621416177807,frozenset({'cds_dvds_musicals'}),1
+0.0013116582665454845,frozenset({'christmas_supplies'}),1
+0.0006713211600429646,frozenset({'cine_photo'}),1
+0.001869371230273486,frozenset({'computers'}),1
+0.06872263075270595,frozenset({'computers_accessories'}),1
+0.010885730810542841,frozenset({'consoles_games'}),1
+0.00770470131372387,frozenset({'construction_tools_construction'}),1
+0.0025097083367760058,frozenset({'construction_tools_lights'}),1
+0.0017041229447244484,frozenset({'construction_tools_safety'}),1
+0.03734611253408246,frozenset({'cool_stuff'}),1
+0.001982979426588449,frozenset({'costruction_tools_garden'}),1
+0.0010018177311410393,frozenset({'costruction_tools_tools'}),1
+0.0002685284640171858,frozenset({'diapers_and_hygiene'}),1
+0.0030570932826571922,frozenset({'drinks'}),1
+0.0005886970172684458,frozenset({'dvds_blu_ray'}),1
+0.026264149384450135,frozenset({'electronics'}),1
+0.00040279269602577875,frozenset({'fashio_female_clothing'}),1
+0.019189457159381973,frozenset({'fashion_bags_accessories'}),1
+8.262414277451872e-05,frozenset({'fashion_childrens_clothes'}),1
+0.0011464099809964472,frozenset({'fashion_male_clothing'}),1
+0.0024580682475419317,frozenset({'fashion_shoes'}),1
+0.00027885648186400065,frozenset({'fashion_sport'}),1
+0.0012496901594645955,frozenset({'fashion_underwear_beach'}),1
+0.0022101958192183757,frozenset({'fixed_telephony'}),1
+0.0002995125175576303,frozenset({'flowers'}),1
+0.004637280013219863,frozenset({'food'}),1
+0.002323804015533339,frozenset({'food_drink'}),1
+0.0009811616954474097,frozenset({'furniture_bedroom'}),1
+0.06635751466578534,frozenset({'furniture_decor'}),1
+0.004337767495662233,frozenset({'furniture_living_room'}),1
+0.0003924646781789639,frozenset({'furniture_mattress_and_upholstery'}),1
+0.036199702553086015,frozenset({'garden_tools'}),1
+0.09088655705197059,frozenset({'health_beauty'}),1
+0.007869949599272907,frozenset({'home_appliances'}),1
+0.0023857721226142278,frozenset({'home_appliances_2'}),1
+0.00024787242832355615,frozenset({'home_comfort_2'}),1
+0.0041002230851854915,frozenset({'home_confort'}),1
+0.005050400727092457,frozenset({'home_construction'}),1
+0.06038792035032636,frozenset({'housewares'}),1
+0.002427084194001487,frozenset({'industry_commerce_and_business'}),1
+0.0025406923903164504,frozenset({'kitchen_dining_laundry_garden_furniture'}),1
+0.0001342642320085929,frozenset({'la_cuisine'}),1
+0.010637858382219284,frozenset({'luggage_accessories'}),1
+0.00288151697926134,frozenset({'market_place'}),1
+0.0003924646781789639,frozenset({'music'}),1
+0.0064033710650252,frozenset({'musical_instruments'}),1
+0.013137238701148475,frozenset({'office_furniture'}),1
+0.00040279269602577875,frozenset({'party_supplies'}),1
+7.229612492770387e-05,frozenset({'pc_gamer'}),1
+0.032491944146079484,frozenset({'perfumery'}),1
+0.017619598446666117,frozenset({'pet_shop'}),1
+0.0001342642320085929,frozenset({'portateis_cozinha_e_preparadores_de_alimentos'}),1
+0.0014459224985540775,frozenset({'signaling_and_security'}),1
+0.00642402710071883,frozenset({'small_appliances'}),1
+0.000774601338511113,frozenset({'small_appliances_home_oven_and_coffee'}),1
+0.07924688093861026,frozenset({'sports_leisure'}),1
+0.023744113029827315,frozenset({'stationery'}),1
+0.0008159134098983723,frozenset({'tablets_printing_image'}),1
+0.043202098653226474,frozenset({'telephony'}),1
+0.0398145087994712,frozenset({'toys'}),1
+0.05787821201355036,frozenset({'watches_gifts'}),1
+5.16400892340742e-05,"frozenset({'furniture_decor', 'art'})",2
+6.196810708088904e-05,"frozenset({'watches_gifts', 'audio'})",2
+5.16400892340742e-05,"frozenset({'computers_accessories', 'auto'})",2
+0.00017557630339585227,"frozenset({'baby', 'bed_bath_table'})",2
+0.0002065603569362968,"frozenset({'baby', 'cool_stuff'})",2
+0.00012393621416177807,"frozenset({'baby', 'furniture_decor'})",2
+5.16400892340742e-05,"frozenset({'housewares', 'baby'})",2
+0.00019623233908948196,"frozenset({'baby', 'toys'})",2
+0.0001032801784681484,"frozenset({'bed_bath_table', 'cool_stuff'})",2
+0.0007229612492770387,"frozenset({'furniture_decor', 'bed_bath_table'})",2
+0.00011360819631496323,"frozenset({'bed_bath_table', 'health_beauty'})",2
+0.0004441047674130381,"frozenset({'home_confort', 'bed_bath_table'})",2
+0.0002065603569362968,"frozenset({'housewares', 'bed_bath_table'})",2
+5.16400892340742e-05,"frozenset({'office_furniture', 'bed_bath_table'})",2
+5.16400892340742e-05,"frozenset({'computers_accessories', 'cool_stuff'})",2
+5.16400892340742e-05,"frozenset({'computers_accessories', 'electronics'})",2
+9.295216062133355e-05,"frozenset({'computers_accessories', 'garden_tools'})",2
+6.196810708088904e-05,"frozenset({'computers_accessories', 'telephony'})",2
+5.16400892340742e-05,"frozenset({'construction_tools_construction', 'garden_tools'})",2
+0.00011360819631496323,"frozenset({'construction_tools_lights', 'furniture_decor'})",2
+6.196810708088904e-05,"frozenset({'telephony', 'cool_stuff'})",2
+7.229612492770387e-05,"frozenset({'cool_stuff', 'toys'})",2
+7.229612492770387e-05,"frozenset({'furniture_living_room', 'furniture_decor'})",2
+0.00017557630339585227,"frozenset({'garden_tools', 'furniture_decor'})",2
+6.196810708088904e-05,"frozenset({'home_confort', 'furniture_decor'})",2
+0.0001342642320085929,"frozenset({'home_construction', 'furniture_decor'})",2
+0.00024787242832355615,"frozenset({'housewares', 'furniture_decor'})",2
+7.229612492770387e-05,"frozenset({'watches_gifts', 'furniture_decor'})",2
+7.229612492770387e-05,"frozenset({'home_construction', 'garden_tools'})",2
+0.00011360819631496323,"frozenset({'housewares', 'garden_tools'})",2
+0.00011360819631496323,"frozenset({'perfumery', 'health_beauty'})",2
+0.00014459224985540774,"frozenset({'sports_leisure', 'health_beauty'})",2
+0.00011360819631496323,"frozenset({'housewares', 'sports_leisure'})",2
+5.16400892340742e-05,"frozenset({'luggage_accessories', 'stationery'})",2
+5.16400892340742e-05,"frozenset({'watches_gifts', 'sports_leisure'})",2
+6.196810708088904e-05,"frozenset({'toys', 'stationery'})",2

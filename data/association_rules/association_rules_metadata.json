@@ -1,0 +1,30 @@
+{
+    "transactions": {
+        "total_orders": 99441,
+        "valid_transactions": 96824,
+        "multi_category_transactions": 726,
+        "multi_category_pct": 0.75
+    },
+    "apriori": {
+        "min_support": 5e-05,
+        "frequent_itemsets": 108
+    },
+    "rules": {
+        "min_confidence": 0.01,
+        "total_rules": 1,
+        "top_rules": [
+            {
+                "antecedent": "home_confort",
+                "consequent": "bed_bath_table",
+                "support": 0.000444,
+                "confidence": 0.1083,
+                "lift": 1.12
+            }
+        ]
+    },
+    "insights": [
+        "Cross-selling opportunity: Customers buying [home_confort] are strongly associated with [bed_bath_table] (Lift: 1.12).",
+        "Product bundling: [home_confort] almost reliably leads to [bed_bath_table] with 10.8% confidence.",
+        "Due to the extremely low rate of multi-category orders (most customers buy 1 item), overall support for rules is very low. These rules represent niche, specialized shopper behaviors rather than broad trends."
+    ]
+}

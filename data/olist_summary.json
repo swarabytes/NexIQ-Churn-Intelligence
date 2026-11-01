@@ -1,0 +1,10 @@
+{
+  "orders": 99441,
+  "customers": 99441,
+  "products": 32951,
+  "items": 112650,
+  "reviews": 99224,
+  "payments": 103886,
+  "date_min": "2016-09-04",
+  "date_max": "2018-10-17"
+}

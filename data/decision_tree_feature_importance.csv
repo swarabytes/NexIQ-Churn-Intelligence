@@ -1,0 +1,14 @@
+feature,importance
+days_since_last_order,0.34633976257760124
+total_orders,0.25742950163055184
+total_spend,0.1285108756532784
+order_frequency,0.12533380624488594
+avg_order_value,0.0805533656548598
+avg_installments,0.04613322375091661
+avg_item_count,0.015699464487903957
+avg_review_score,2.0788570525284047e-15
+review_count,1.2934942453647123e-16
+tenure_days,0.0
+avg_categories_per_order,0.0
+total_payment_types,0.0
+has_review,0.0

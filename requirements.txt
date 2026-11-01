@@ -3,6 +3,8 @@ gunicorn
 pandas
 numpy
 scikit-learn
+imbalanced-learn
+xgboost
 joblib
 openpyxl
 scipy

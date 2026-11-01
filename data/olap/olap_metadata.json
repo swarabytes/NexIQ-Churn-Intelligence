@@ -1,0 +1,52 @@
+{
+    "dataset": {
+        "orders": 98199,
+        "customers": 94983,
+        "date_range": {
+            "min": "2016-09-04",
+            "max": "2018-09-03"
+        },
+        "states": 27,
+        "categories": 74
+    },
+    "operations": {
+        "rollup": {
+            "hierarchy": "month \u2192 year",
+            "monthly_records": 24,
+            "yearly_records": 3
+        },
+        "drilldown": {
+            "selected_year": 2018,
+            "monthly_records": 9
+        },
+        "slice": {
+            "dimension": "customer_state",
+            "value": "SP",
+            "orders": 41125
+        },
+        "dice": {
+            "filters": {
+                "customer_state": [
+                    "SP",
+                    "RJ",
+                    "MG"
+                ],
+                "year": [
+                    2017,
+                    2018
+                ],
+                "product_category": [
+                    "bed_bath_table",
+                    "health_beauty"
+                ]
+            },
+            "orders": 12597
+        }
+    },
+    "insights": [
+        "Year 2018 had the highest order volume (53,531 orders).",
+        "S\u00e3o Paulo (SP) is the most dominant customer state, accounting for 41.9% of all orders.",
+        "The top 2 product categories are: bed_bath_table, health_beauty.",
+        "The Dice result shows concentration of orders in SP/RJ/MG across 2017-2018 for the top categories."
+    ]
+}

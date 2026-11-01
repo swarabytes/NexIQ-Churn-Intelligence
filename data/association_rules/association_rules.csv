@@ -1,0 +1,2 @@
+antecedents,consequents,antecedent support,consequent support,support,confidence,lift,representativity,leverage,conviction,zhangs_metric,jaccard,certainty,kulczynski,antecedents_str,consequents_str
+frozenset({'home_confort'}),frozenset({'bed_bath_table'}),0.0041002230851854915,0.09707303974221268,0.0004441047674130381,0.10831234256926951,1.1157819190261677,1.0,4.608364891288896e-05,1.012604528876671,0.10419473847067326,0.004408899825694658,0.012447632335452683,0.056443648675846586,home_confort,bed_bath_table

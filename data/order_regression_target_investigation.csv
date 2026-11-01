@@ -1,0 +1,5 @@
+Target,Observation_Unit,Valid_Observations,Missing_Observations,Mean,Median,Std,Min,Max,Unique_Values,Zero_Percentage,Skewness,Regression_Suitability,Leakage_Risk,Recommendation
+Delivery Delay,One Order,96470,1732,-11.17812572885353,-11.948101851851852,10.1843539272045,-146.0161226851852,188.97508101851852,91910,0.0,2.011003511000436,Good continuous target,Low,Recommended Backup
+Freight Value,One Order,98199,3,22.82229238586951,17.19,21.64576445784135,0.0,1794.96,7946,0.344199024429984,12.09866895535305,"Highly continuous, strict monetary target",Low,Recommended Primary
+Order Total Value,One Order,98201,1,160.2677051150192,105.28,219.1267971428268,9.59,13664.08,27753,0.0,9.258517326891385,Continuous but risky,High (price determines total),Reject (Leakage/Redundant)
+Order Item Count,One Order,98199,3,1.1415696697522377,1.0,0.5375557223369933,1.0,21.0,17,0.0,7.547334454394337,Discrete/Count data,Low,Reject (Not continuous)
