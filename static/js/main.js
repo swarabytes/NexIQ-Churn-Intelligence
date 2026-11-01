@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
         "average_review_score": 4.2,
         "payment_count": 15,
         "delivery_delay": 2,
-        "inactivity_days": 20
+        "inactivity_days": 15
     };
 
 
@@ -122,6 +122,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupPredictPage() {
+        // Keep Recency and Inactivity Days synchronized for seamless UX
+        const recencyInput = document.getElementById('recency');
+        const inactInput = document.getElementById('inactivity_days');
+        if (recencyInput && inactInput) {
+            recencyInput.addEventListener('input', () => {
+                inactInput.value = recencyInput.value;
+                const err = document.getElementById('err-inactivity_days');
+                if (err) err.classList.remove('visible');
+            });
+            inactInput.addEventListener('input', () => {
+                recencyInput.value = inactInput.value;
+                const err = document.getElementById('err-recency');
+                if (err) err.classList.remove('visible');
+            });
+        }
         const btnAutofill = document.getElementById('btn-autofill');
         const btnPasteJson = document.getElementById('btn-paste-json');
         const jsonInput = document.getElementById('json-input');
@@ -584,7 +599,9 @@ document.addEventListener('DOMContentLoaded', () => {
         badge.className = `badge ${result.risk_level.toLowerCase()}`;
         badge.innerText = `${result.risk_level} Risk`;
 
-        const probPercent = Math.round(result.probability * 100);
+        if (window._gaugeInterval) clearInterval(window._gaugeInterval);
+
+        const targetPercent = Math.max(0, Math.min(100, Math.round(result.probability * 100)));
         const probAnim = document.getElementById('res-prob-anim');
         const circProg = document.getElementById('circular-progress');
 
@@ -592,18 +609,36 @@ document.addEventListener('DOMContentLoaded', () => {
         if (result.risk_level === 'Medium') color = '#f59e0b';
         if (result.risk_level === 'High') color = '#ef4444';
 
-        let cur = 0;
-        const interval = setInterval(() => {
-            cur++;
-            probAnim.innerText = `${cur}%`;
-            circProg.style.background = `conic-gradient(${color} ${cur * 3.6}deg, rgba(255,255,255,0.07) 0deg)`;
-            if (cur >= probPercent) clearInterval(interval);
-        }, 15);
+        if (targetPercent === 0) {
+            probAnim.innerText = '0%';
+            circProg.style.background = `conic-gradient(${color} 0deg, rgba(255,255,255,0.07) 0deg)`;
+        } else {
+            let cur = 0;
+            const step = Math.max(1, Math.ceil(targetPercent / 25));
+            window._gaugeInterval = setInterval(() => {
+                cur += step;
+                if (cur >= targetPercent) {
+                    cur = targetPercent;
+                    clearInterval(window._gaugeInterval);
+                }
+                probAnim.innerText = `${cur}%`;
+                circProg.style.background = `conic-gradient(${color} ${cur * 3.6}deg, rgba(255,255,255,0.07) 0deg)`;
+            }, 18);
+        }
 
-        const healthScore = 100 - probPercent;
-        setTimeout(() => {
-            document.getElementById('res-health-fill').style.width = `${healthScore}%`;
-        }, 300);
+        const healthScore = result.health_score !== undefined
+            ? Math.round(result.health_score)
+            : Math.max(0, Math.min(100, Math.round((1.0 - result.probability) * 100)));
+
+        const healthVal = document.getElementById('res-health-val');
+        if (healthVal) healthVal.innerText = `${healthScore}%`;
+
+        const healthFill = document.getElementById('res-health-fill');
+        if (healthFill) {
+            setTimeout(() => {
+                healthFill.style.width = `${healthScore}%`;
+            }, 150);
+        }
 
         document.getElementById('res-insight').innerText =
             result.insight || 'Customer shows stable purchasing behavior.';

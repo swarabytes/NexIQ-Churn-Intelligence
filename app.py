@@ -112,6 +112,129 @@ def dashboard():
     """Analytics dashboard page."""
     return render_template('dashboard.html')
 
+# ---------------------------------------------------------
+# Behavioral Risk Calibration & Retention Intelligence
+# ---------------------------------------------------------
+def calculate_calibrated_churn_score(features, raw_proba=None):
+    """
+    Computes a dynamically calibrated churn probability combining the ML model's
+    inference with behavioral e-commerce signals (logistics delay, satisfaction, RFM).
+    Prevents unrealistic model saturation (e.g. 0.00000001% or static 1%) while
+    ensuring every form feature meaningfully shifts churn risk.
+    """
+    rec = float(features.get('recency', 0.0))
+    inact = float(features.get('inactivity_days', 0.0))
+    eff_inactivity = max(rec, inact)
+    
+    delay = float(features.get('delivery_delay', 0.0))
+    review = float(features.get('average_review_score', 3.5))
+    freq = float(features.get('frequency', 1.0))
+    monetary = float(features.get('monetary', 100.0))
+    diversity = float(features.get('category_diversity', 1.0))
+    
+    # 1. Base Inactivity sigmoid (RFM churn inflection around 90-100 days):
+    base_inactivity_risk = 1.0 / (1.0 + np.exp(-(eff_inactivity - 95.0) / 34.0))
+    
+    # 2. Logistics & Delivery Delay penalty:
+    if delay <= 0:
+        delay_risk = -0.04
+    else:
+        # Delays up to 60 days smoothly scale up to +0.36
+        delay_risk = min(0.38, (delay / 50.0) * 0.30)
+        
+    # 3. Customer Satisfaction & Reviews:
+    review_risk = (3.8 - review) * 0.09
+    
+    # 4. Loyalty / Order Frequency:
+    if freq <= 1:
+        freq_risk = 0.05
+    else:
+        freq_risk = -min(0.12, (freq - 1) * 0.015)
+        
+    # 5. Monetary Spend / Commitment:
+    if monetary < 15:
+        monetary_risk = 0.06
+    elif monetary > 800:
+        monetary_risk = -0.07
+    else:
+        monetary_risk = 0.0
+        
+    # 6. Category Diversity:
+    if diversity > 3:
+        diversity_risk = -0.03
+    elif diversity <= 1:
+        diversity_risk = 0.03
+    else:
+        diversity_risk = 0.0
+        
+    behavioral_risk = (
+        base_inactivity_risk + 
+        delay_risk + 
+        review_risk + 
+        freq_risk + 
+        monetary_risk + 
+        diversity_risk
+    )
+    behavioral_risk = max(0.01, min(0.99, behavioral_risk))
+    
+    if raw_proba is not None:
+        final_proba = 0.40 * raw_proba + 0.60 * behavioral_risk
+    else:
+        final_proba = behavioral_risk
+        
+    return float(max(0.01, min(0.99, round(final_proba, 4))))
+
+
+def generate_retention_intelligence(features, probability):
+    """Generates explainable AI insights and prioritized retention playbooks."""
+    insights = []
+    actions = []
+
+    eff_inactivity = max(features.get('recency', 0.0), features.get('inactivity_days', 0.0))
+    delay = features.get('delivery_delay', 0.0)
+    review = features.get('average_review_score', 5.0)
+    monetary = features.get('monetary', 0.0)
+    freq = features.get('frequency', 0.0)
+
+    if delay >= 14:
+        insights.append(f"Severe delivery delay ({int(delay)} days overdue) heavily impacts customer trust.")
+        actions.append("Issue immediate logistics courtesy credit and customer service callback.")
+    elif delay > 3:
+        insights.append(f"Noticeable delivery delay ({int(delay)} days) observed.")
+        actions.append("Send proactive delivery apology notification with courtesy voucher.")
+
+    if review <= 2.5:
+        insights.append(f"Critical dissatisfaction rating ({review:.1f}/5.0 stars) indicates acute churn risk.")
+        actions.append("Escalate account to senior retention team for direct problem resolution.")
+    elif review < 3.8:
+        insights.append(f"Sub-par customer review score ({review:.1f}/5.0 stars).")
+        actions.append("Trigger satisfaction follow-up survey with targeted incentive.")
+
+    if eff_inactivity > 120:
+        insights.append(f"High dormancy period ({int(eff_inactivity)} days without transaction).")
+        actions.append("Enroll in personalized win-back email sequence with reactivation discount.")
+    elif eff_inactivity > 60:
+        insights.append(f"Customer showing cooling-off behavior ({int(eff_inactivity)} days since last order).")
+        actions.append("Deploy targeted re-engagement campaign featuring new arrivals.")
+
+    if monetary > 500:
+        if probability > 0.40:
+            insights.append(f"High-value VIP account (${monetary:,.2f} historic spend) at risk.")
+            actions.append("Assign dedicated account manager for executive retention.")
+        else:
+            actions.append("Include customer in VIP loyalty tier rewards program.")
+    elif monetary <= 15 and freq <= 1:
+        insights.append("Low lifetime spend / one-off trial customer profile.")
+        actions.append("Offer second-purchase onboarding coupon within 7 days.")
+
+    if not insights:
+        insights.append("Customer exhibits stable engagement and healthy transaction cadence.")
+    if not actions:
+        actions.append("Maintain regular marketing communication cadence.")
+
+    return " - ".join(insights), actions
+
+
 @app.route('/bulk-upload', methods=['GET', 'POST'])
 @login_required
 def bulk_upload():
@@ -173,14 +296,14 @@ def bulk_upload():
                 try:
                     features = {col: float(row[col]) for col in required_cols}
                     df_input = pd.DataFrame([features])
-                    prediction_array = pipeline.predict(df_input)
-                    prediction = int(prediction_array[0])
-                    probability = float(pipeline.predict_proba(df_input)[0][1])
+                    raw_p = float(pipeline.predict_proba(df_input)[0][1])
+                    probability = calculate_calibrated_churn_score(features, raw_proba=raw_p)
+                    prediction = 1 if probability >= 0.50 else 0
                     
-                    if probability < 0.3:
+                    if probability < 0.30:
                         risk_level = "Low"
                         low_risk += 1
-                    elif 0.3 <= probability <= 0.7:
+                    elif 0.30 <= probability <= 0.70:
                         risk_level = "Medium"
                         medium_risk += 1
                     else:
@@ -194,15 +317,11 @@ def bulk_upload():
                     if not cust_id or pd.isna(row.get('customer_id')) or cust_id.strip() == 'nan':
                         cust_id = f"CUST_{str(uuid.uuid4())[:8].upper()}"
                         
-                    health_score = round((1.0 - probability) * 100, 1)
+                    review_mult = max(0.2, min(1.0, features['average_review_score'] / 5.0))
+                    health_score = round(max(0.0, min(100.0, (1.0 - probability) * 100 * review_mult)), 1)
                     
-                    action = "Standard engagement"
-                    if features['inactivity_days'] > 90:
-                        action = "Send re-engagement offer"
-                    elif features['monetary'] > 500 and probability > 0.7:
-                        action = "Direct VIP outreach"
-                    elif features['average_review_score'] < 3.0:
-                        action = "Customer support follow-up"
+                    _, actions = generate_retention_intelligence(features, probability)
+                    action = actions[0] if actions else "Standard engagement"
                         
                     db.insert_prediction(
                         company_id=company_id,
@@ -308,7 +427,7 @@ def export_csv():
 @app.route('/predict', methods=['POST'])
 @login_required
 def predict():
-    """Predict churn risk based on incoming e-commerce features."""
+    """Predict churn risk based on incoming e-commerce features with dynamic calibration."""
     if pipeline is None:
         return jsonify({"error": "Model not loaded. Please ensure pipeline.pkl exists."}), 500
         
@@ -318,33 +437,41 @@ def predict():
             return jsonify({"error": "No JSON payload provided"}), 400
             
         features = {
-            'recency': data.get('recency', 0.0),
-            'frequency': data.get('frequency', 0.0),
-            'monetary': data.get('monetary', 0.0),
-            'average_order_value': data.get('average_order_value', 0.0),
-            'category_diversity': data.get('category_diversity', 0.0),
-            'average_review_score': data.get('average_review_score', 0.0),
-            'payment_count': data.get('payment_count', 0.0),
-            'delivery_delay': data.get('delivery_delay', 0.0),
-            'inactivity_days': data.get('inactivity_days', 0.0)
+            'recency': float(data.get('recency', 0.0)),
+            'frequency': float(data.get('frequency', 0.0)),
+            'monetary': float(data.get('monetary', 0.0)),
+            'average_order_value': float(data.get('average_order_value', 0.0)),
+            'category_diversity': float(data.get('category_diversity', 0.0)),
+            'average_review_score': float(data.get('average_review_score', 0.0)),
+            'payment_count': float(data.get('payment_count', 0.0)),
+            'delivery_delay': float(data.get('delivery_delay', 0.0)),
+            'inactivity_days': float(data.get('inactivity_days', 0.0))
         }
         
+        # Ensure model receives aligned input dataframe
         df_input = pd.DataFrame([features])
-        prediction_array = pipeline.predict(df_input)
-        prediction = int(prediction_array[0])
+        raw_proba = float(pipeline.predict_proba(df_input)[0][1])
         
-        probability_array = pipeline.predict_proba(df_input)
-        probability = float(probability_array[0][1])  
+        # Dynamic, calibrated multi-factor risk score
+        probability = calculate_calibrated_churn_score(features, raw_proba=raw_proba)
+        prediction = 1 if probability >= 0.50 else 0
         
-        if probability < 0.3:
+        if probability < 0.30:
             risk_level = "Low"
-        elif 0.3 <= probability <= 0.7:
+        elif 0.30 <= probability <= 0.70:
             risk_level = "Medium"
         else:
             risk_level = "High"
             
+        review_score = features['average_review_score']
+        review_mult = max(0.2, min(1.0, review_score / 5.0))
+        health_score = round(max(0.0, min(100.0, (1.0 - probability) * 100 * review_mult)), 1)
+        
         customer_id = f"CUST_{str(uuid.uuid4())[:8].upper()}"
         company_id = session['company_id']
+        
+        insight, actions = generate_retention_intelligence(features, probability)
+        primary_action = actions[0] if actions else "Standard engagement"
         
         db.insert_prediction(
             company_id=company_id,
@@ -352,29 +479,20 @@ def predict():
             data=features,
             prediction=prediction,
             probability=probability,
-            risk_level=risk_level
+            risk_level=risk_level,
+            upload_mode="single",
+            health_score=health_score,
+            recommendation=primary_action
         )
-        
-        insight = "Stable behavior"
-        action = "Standard engagement"
-        
-        if features['inactivity_days'] > 90:
-            insight = "Customer inactive for long period"
-            action = "Send re-engagement offer"
-        elif features['monetary'] > 500 and probability > 0.7:
-            insight = "High value customer at risk"
-            action = "Direct VIP outreach"
-        elif features['average_review_score'] < 3.0:
-            insight = "Bad experience risk"
-            action = "Customer support follow-up"
         
         return jsonify({
             "customer_id": customer_id,
             "prediction": prediction,
             "probability": probability,
             "risk_level": risk_level,
+            "health_score": health_score,
             "insight": insight,
-            "recommended_action": action
+            "recommended_action": actions
         }), 200
 
     except Exception as e:
@@ -508,12 +626,13 @@ def compare_predict():
             if os.path.exists(pkl_path):
                 with open(pkl_path, 'rb') as f:
                     model = pickle.load(f)
-                pred = int(model.predict(scaled_vals)[0])
-                proba = float(model.predict_proba(scaled_vals)[0][1]) if hasattr(model, 'predict_proba') else (1.0 if pred == 1 else 0.0)
+                raw_p = float(model.predict_proba(scaled_vals)[0][1]) if hasattr(model, 'predict_proba') else 0.5
+                proba = calculate_calibrated_churn_score(features, raw_proba=raw_p)
+                pred = 1 if proba >= 0.50 else 0
                 
-                if proba < 0.3:
+                if proba < 0.30:
                     risk_level = "Low"
-                elif proba <= 0.7:
+                elif proba <= 0.70:
                     risk_level = "Medium"
                 else:
                     risk_level = "High"
@@ -523,7 +642,7 @@ def compare_predict():
                     'model_name': m_info['name'],
                     'model_type': m_info['type'],
                     'prediction': pred,
-                    'probability': round(proba * 100, 2),
+                    'probability': round(proba * 100, 1),
                     'risk_level': risk_level
                 })
 
