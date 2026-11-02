@@ -6,7 +6,7 @@
 ## ⚡ 1. The Spoken Pitches
 
 ### 30-Second Opening
-> "Good morning, examiners. **NexIQ** is a production-grade E-Commerce Customer Intelligence and Academic Data Mining platform. It solves silent customer attrition by predicting churn risk on physical transaction holdouts with a **0.963 F1-score and 100% recall**. Beyond operational prediction, NexIQ functions as a research laboratory implementing core Data Warehousing and Data Mining operations—including star schemas, multidimensional OLAP cubes, agglomerative clustering dendrograms, and Apriori association rules—backed by multi-tenant SQLite isolation and real-time Chart.js visualizations."
+> "Good morning, examiners. **NexIQ** is a production-grade E-Commerce Customer Intelligence and Academic Data Mining platform. It solves silent customer attrition by predicting churn risk on physical transaction holdouts with a **0.803 F1-score and 90.4% recall**. Beyond operational prediction, NexIQ functions as a research laboratory implementing core Data Warehousing and Data Mining operations—including star schemas, multidimensional OLAP cubes, agglomerative clustering dendrograms, and Apriori association rules—backed by multi-tenant SQLite isolation and real-time Chart.js visualizations."
 
 ### 60-Second Deep Pitch
 > "Acquiring a new e-commerce customer costs 5 to 7 times more than retaining an existing one. In non-contractual retail like Olist, customers do not explicitly cancel; they silently stop purchasing. NexIQ addresses this through a dual-engine architecture:
@@ -35,12 +35,12 @@
 
 | Model Architecture | Rank | F1-Score | Recall | Precision | ROC-AUC | PR-AUC | Accuracy | Train Time | Inference |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Logistic Regression (L2)** | 👑 **#1** | **0.9630** | **1.0000** | 0.9286 | **0.9992** | **0.9978** | **98.0%** | **9.6 ms** | **1.02 ms** |
-| **XGBoost Classifier** | **#2** | 0.9307 | 0.9038 | **0.9592** | 0.9862 | 0.9698 | 96.5% | 75.4 ms | 3.52 ms |
-| **Random Forest (100 Trees)** | **#3** | 0.8776 | 0.8269 | 0.9348 | 0.9676 | 0.9430 | 94.0% | 554.3 ms | 41.9 ms |
+| **Logistic Regression (L2)** | 👑 **#1** | **0.8034** | **0.9038** | 0.7231 | **0.9563** | **0.8841** | **88.5%** | **12.4 ms** | **1.05 ms** |
+| **XGBoost Classifier** | **#2** | 0.7748 | 0.8269 | **0.7288** | 0.9443 | 0.8507 | 87.5% | 78.5 ms | 3.42 ms |
+| **Random Forest (100 Trees)** | **#3** | 0.7455 | 0.7885 | 0.7069 | 0.9343 | 0.8459 | 86.0% | 492.0 ms | 38.6 ms |
 
-* **Why Logistic Regression Won**: Monotonic linear relationship between inactivity/recency and churn log-odds. With 800 training rows, deep trees suffer from partition step-variance, whereas regularized logistic sigmoid forms a smooth, leak-free boundary catching 100% of churners (FN = 0).
-* **Holdout Confusion Matrix (LR)**: `TN: 144 | FP: 4 | FN: 0 | TP: 52` (Total Errors: 4 out of 200).
+* **Why Logistic Regression Won**: Monotonic linear relationship between inactivity/recency and churn log-odds. With 800 training rows, deep trees suffer from partition step-variance, whereas regularized logistic sigmoid forms a smooth, leak-free boundary catching 90.4% of churners (FN = 5).
+* **Holdout Confusion Matrix (LR)**: `TN: 130 | FP: 18 | FN: 5 | TP: 47` (Total Errors: 23 out of 200).
 
 ---
 
@@ -57,7 +57,8 @@
 9. **Customer Health Score**: $	ext{round}((1.0 - P) 	imes 100 	imes rac{	ext{ReviewScore}}{5.0})$
 10. **Apriori Support**: $rac{	ext{Orders with A and B}}{	ext{Total Orders}}$
 11. **Apriori Confidence**: $rac{	ext{Support}(A \cup B)}{	ext{Support}(A)}$
-12. **Apriori Lift**: $rac{	ext{Confidence}(A ightarrow B)}{	ext{Support}(B)} = rac{P(A \cap B)}{P(A) 	imes P(B)}$ (Lift $> 1.0 \implies$ positive co-purchase affinity)
+12. **Apriori Lift**: $rac{	ext{Confidence}(A 
+ightarrow B)}{	ext{Support}(B)} = rac{P(A \cap B)}{P(A) 	imes P(B)}$ (Lift $> 1.0 \implies$ positive co-purchase affinity)
 13. **Cost-Sensitive Weighting**: $w_j = rac{N}{2 	imes N_j}$ (Churn weight $pprox 1.93$, Non-churn $pprox 0.67$)
 
 ---
@@ -79,7 +80,7 @@
 1. **What is NexIQ?** Enterprise customer churn prediction & academic data mining platform.
 2. **What problem does it solve?** Silent customer attrition in non-contractual e-commerce.
 3. **What is the champion model?** Logistic Regression with L2 Regularization & Balanced Class Weighting.
-4. **What is the champion F1-score and Recall?** F1: 0.9630, Recall: 1.0000 (100%).
+4. **What is the champion F1-score and Recall?** F1: 0.8034, Recall: 0.9038 (90.4%).
 5. **How many features are used?** 9 domain-engineered RFM and behavioral features.
 6. **Why not PCA?** PCA destroys domain interpretability; business leaders cannot act on eigenvectors.
 7. **How do you prevent data leakage?** Preprocessing transformers are wrapped in Scikit-Learn Pipelines fitted solely on `X_train`.

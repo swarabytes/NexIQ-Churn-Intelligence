@@ -1,5 +1,44 @@
 [
   {
+    "run_id": "run_20261102_075650",
+    "timestamp": "2026-11-02 07:56:50",
+    "imbalance_method": "smote",
+    "criterion": "f1_score",
+    "best_model": "Logistic Regression",
+    "best_f1": 0.8034,
+    "best_accuracy": 0.885,
+    "best_recall": 0.9038,
+    "models_summary": [
+      {
+        "key": "logistic_regression",
+        "name": "Logistic Regression",
+        "rank": 1,
+        "f1": 0.8034,
+        "acc": 0.885,
+        "rec": 0.9038,
+        "auc": 0.9563
+      },
+      {
+        "key": "xgboost",
+        "name": "XGBoost",
+        "rank": 2,
+        "f1": 0.7748,
+        "acc": 0.875,
+        "rec": 0.8269,
+        "auc": 0.9443
+      },
+      {
+        "key": "random_forest",
+        "name": "Random Forest",
+        "rank": 3,
+        "f1": 0.7455,
+        "acc": 0.86,
+        "rec": 0.7885,
+        "auc": 0.9343
+      }
+    ]
+  },
+  {
     "run_id": "run_20261101_175452",
     "timestamp": "2026-11-01 17:54:52",
     "imbalance_method": "smote",

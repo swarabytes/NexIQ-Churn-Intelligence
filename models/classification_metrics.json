@@ -1,17 +1,17 @@
 [
     {
         "model": "Logistic Regression",
-        "accuracy": 0.98,
-        "precision": 0.9285714285714286,
-        "recall": 1.0,
-        "f1_score": 0.9629629629629629,
-        "specificity": 0.972972972972973,
-        "roc_auc": 0.9992203742203742,
+        "accuracy": 0.885,
+        "precision": 0.7231,
+        "recall": 0.9038,
+        "f1_score": 0.8034,
+        "specificity": 0.8784,
+        "roc_auc": 0.9563,
         "confusion_matrix": {
-            "TN": 144,
-            "FP": 4,
-            "FN": 0,
-            "TP": 52
+            "TN": 130,
+            "FP": 18,
+            "FN": 5,
+            "TP": 47
         },
         "Logistic Regression Coefficients": {
             "recency": 4.170460293071742,
@@ -27,17 +27,17 @@
     },
     {
         "model": "Random Forest",
-        "accuracy": 0.935,
-        "precision": 0.9148936170212766,
-        "recall": 0.8269230769230769,
-        "f1_score": 0.8686868686868687,
-        "specificity": 0.972972972972973,
-        "roc_auc": 0.9780405405405406,
+        "accuracy": 0.86,
+        "precision": 0.7069,
+        "recall": 0.7885,
+        "f1_score": 0.7455,
+        "specificity": 0.8851,
+        "roc_auc": 0.9343,
         "confusion_matrix": {
-            "TN": 144,
-            "FP": 4,
-            "FN": 9,
-            "TP": 43
+            "TN": 131,
+            "FP": 17,
+            "FN": 11,
+            "TP": 41
         },
         "feature_importance": {
             "recency": 0.23686627617576045,
@@ -53,17 +53,17 @@
     },
     {
         "model": "XGBoost",
-        "accuracy": 0.96,
-        "precision": 0.9583333333333334,
-        "recall": 0.8846153846153846,
-        "f1_score": 0.92,
-        "specificity": 0.9864864864864865,
-        "roc_auc": 0.9864864864864865,
+        "accuracy": 0.875,
+        "precision": 0.7288,
+        "recall": 0.8269,
+        "f1_score": 0.7748,
+        "specificity": 0.8919,
+        "roc_auc": 0.9443,
         "confusion_matrix": {
-            "TN": 146,
-            "FP": 2,
-            "FN": 6,
-            "TP": 46
+            "TN": 132,
+            "FP": 16,
+            "FN": 9,
+            "TP": 43
         },
         "feature_importance": {
             "recency": 0.24343110620975494,
