@@ -1,17 +1,17 @@
 [
     {
         "model": "Logistic Regression",
-        "accuracy": 0.885,
-        "precision": 0.7231,
-        "recall": 0.9038,
-        "f1_score": 0.8034,
-        "specificity": 0.8784,
-        "roc_auc": 0.9563,
+        "accuracy": 0.9,
+        "precision": 0.7759,
+        "recall": 0.8654,
+        "f1_score": 0.8182,
+        "specificity": 0.9122,
+        "roc_auc": 0.942,
         "confusion_matrix": {
-            "TN": 130,
-            "FP": 18,
-            "FN": 5,
-            "TP": 47
+            "TN": 135,
+            "FP": 13,
+            "FN": 7,
+            "TP": 45
         },
         "Logistic Regression Coefficients": {
             "recency": 4.170460293071742,
@@ -27,17 +27,17 @@
     },
     {
         "model": "Random Forest",
-        "accuracy": 0.86,
-        "precision": 0.7069,
-        "recall": 0.7885,
-        "f1_score": 0.7455,
+        "accuracy": 0.84,
+        "precision": 0.6852,
+        "recall": 0.7115,
+        "f1_score": 0.6981,
         "specificity": 0.8851,
-        "roc_auc": 0.9343,
+        "roc_auc": 0.892,
         "confusion_matrix": {
             "TN": 131,
             "FP": 17,
-            "FN": 11,
-            "TP": 41
+            "FN": 15,
+            "TP": 37
         },
         "feature_importance": {
             "recency": 0.23686627617576045,
@@ -53,17 +53,17 @@
     },
     {
         "model": "XGBoost",
-        "accuracy": 0.875,
-        "precision": 0.7288,
-        "recall": 0.8269,
-        "f1_score": 0.7748,
-        "specificity": 0.8919,
-        "roc_auc": 0.9443,
+        "accuracy": 0.865,
+        "precision": 0.7273,
+        "recall": 0.7692,
+        "f1_score": 0.7477,
+        "specificity": 0.8986,
+        "roc_auc": 0.915,
         "confusion_matrix": {
-            "TN": 132,
-            "FP": 16,
-            "FN": 9,
-            "TP": 43
+            "TN": 133,
+            "FP": 15,
+            "FN": 12,
+            "TP": 40
         },
         "feature_importance": {
             "recency": 0.24343110620975494,
